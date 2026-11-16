@@ -169,7 +169,7 @@ function tiltPad(v: Extract<View, { type: 'tilt' }>, send: Send): HTMLElement[] 
   }
   for (const b of v.holds || []) {
     const el = h('button.btn.bigbtn', { 'data-live': 'btn-' + b.id }, b.label);
-    el.onpointerdown = (e) => { e.preventDefault(); el.setPointerCapture(e.pointerId); el.classList.add('held'); send({ hold: b.id, on: true }); };
+    el.onpointerdown = (e) => { e.preventDefault(); try { el.setPointerCapture(e.pointerId); } catch { /* pointer already gone */ } el.classList.add('held'); send({ hold: b.id, on: true }); };
     el.onpointerup = el.onpointercancel = () => { el.classList.remove('held'); send({ hold: b.id, on: false }); };
     out.push(el);
   }
