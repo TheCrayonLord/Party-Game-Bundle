@@ -23,7 +23,7 @@ async function chooseCourse(ctx: Ctx, kind: 'kart' | 'boat'): Promise<Course> {
 }
 
 type Prop = 'tent' | 'tree' | 'lolly' | 'gumdrop' | 'cactus' | 'rock' | 'pine' | 'snowman' | 'tower' | 'palm' | 'bush' | 'islet' | 'lighthouse' | 'lily' | 'stump' | 'iceberg' | 'lava';
-interface Theme { ground: string; road: string; edge: string; sky: string; props: Prop[]; /** Light colour; warm sunset by default. */ light?: string }
+interface Theme { ground: string; road: string; edge: string; sky: string; props: Prop[]; /** Light colour; warm sunset by default. */ light?: string; /** Dark course: boats carry lamps, buoys and lanterns glow. */ night?: boolean }
 interface Course { name: string; theme: Theme; pts: [number, number][] }
 
 /** Six kart tracks and five boat courses, each with its own look. The host player picks one before each race. */
@@ -51,6 +51,8 @@ export const COURSES: Record<'kart' | 'boat', Course[]> = {
       pts: [[-66, -14], [-36, -34], [4, -32], [30, -20], [56, -32], [70, -4], [56, 26], [22, 34], [-6, 22], [-34, 34], [-60, 26], [-70, 6]] },
     { name: 'Iceberg Ring', theme: { ground: '#3f7fa8', road: '#5196c2', edge: '#5196c2', sky: '#23395c', props: ['iceberg', 'iceberg', 'iceberg'], light: '#eaf3ff' },
       pts: [[-62, -20], [-20, -36], [24, -36], [62, -22], [70, 6], [52, 30], [10, 36], [-34, 34], [-64, 22], [-72, 0]] },
+    { name: 'Midnight Marina', theme: { ground: '#0e2a40', road: '#12324c', edge: '#12324c', sky: '#04060d', props: ['rock', 'lighthouse', 'rock'], light: '#8fb4ff', night: true },
+      pts: [[-64, -18], [-30, -36], [12, -32], [50, -36], [70, -10], [60, 22], [28, 34], [-10, 26], [-44, 36], [-70, 12]] },
     { name: 'Volcano Bay', theme: { ground: '#2a2030', road: '#3d2c44', edge: '#3d2c44', sky: '#3a1414', props: ['lava', 'lava', 'rock'] },
       pts: [[-64, -22], [-24, -36], [20, -28], [60, -34], [72, -6], [60, 26], [24, 36], [0, 20], [-28, 34], [-60, 30], [-72, 4]] },
   ],
@@ -112,8 +114,10 @@ export async function runRace(ctx: Ctx, cfg: RaceConfig): Promise<Score[]> {
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(th.sky);
   const cam = new THREE.PerspectiveCamera(38, 16 / 9, 1, 600);
-  scene.add(new THREE.AmbientLight(th.light ?? '#ffe1c4', 1.5));
-  const sun = new THREE.DirectionalLight(th.light ?? '#ffb37a', 1.6); sun.position.set(-40, 80, 30); scene.add(sun);
+  const night = !!th.night;
+  if (night) renderer.setPixelRatio(1);      // a dozen boat lamps cost extra, so draw the night course at plain resolution
+  scene.add(new THREE.AmbientLight(th.light ?? '#ffe1c4', night ? 0.3 : 1.5));
+  const sun = new THREE.DirectionalLight(th.light ?? '#ffb37a', night ? 0.25 : 1.6); sun.position.set(-40, 80, 30); scene.add(sun);
   const overlay = h('div.kart-overlay');
   const board = h('div.kart-board');
   ctx.show(renderer.domElement, board, overlay);
@@ -158,7 +162,7 @@ export async function runRace(ctx: Ctx, cfg: RaceConfig): Promise<Score[]> {
     };
     for (const [i, rep] of [[0, 17], [1, 10.5]]) {
       const tex = ripples(i + 1); tex.repeat.set(rep * 1.5, rep); waterLayers.push(tex);
-      const layer = new THREE.Mesh(new THREE.PlaneGeometry(600, 400), new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false }));
+      const layer = new THREE.Mesh(new THREE.PlaneGeometry(600, 400), new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, opacity: night ? 0.22 : 1 }));
       layer.rotation.x = -Math.PI / 2; layer.position.y = 0.02 + i * 0.01; scene.add(layer);
     }
     const foam = new THREE.CircleGeometry(1, 8);
@@ -173,7 +177,8 @@ export async function runRace(ctx: Ctx, cfg: RaceConfig): Promise<Score[]> {
   const clear = (x: number, z: number) => S.every((s) => (s.x - x) ** 2 + (s.z - z) ** 2 > (WIDTH / 2 + 7) ** 2);
   if (boat) {
     // Open water: the course is marked by pairs of buoys, red on the left, green on the right.
-    const bGeo = new THREE.CylinderGeometry(0.6, 0.9, 1.7, 6), red = mat('#e4572e'), green = mat('#7bd67b');
+    const glowing = (c: string) => new THREE.MeshBasicMaterial({ color: c });      // at night the marker buoys are lit
+    const bGeo = new THREE.CylinderGeometry(0.6, 0.9, 1.7, 6), red = night ? glowing('#ff5a3c') : mat('#e4572e'), green = night ? glowing('#6dff8a') : mat('#7bd67b');
     for (let i = 0; i < N; i += 18) for (const side of [1, -1]) {
       const s = at(i, side * (WIDTH / 2 + 0.6)), b = new THREE.Mesh(bGeo, side > 0 ? red : green);
       b.position.set(s.x, 0.8, s.z); scene.add(b);
@@ -237,6 +242,30 @@ export async function runRace(ctx: Ctx, cfg: RaceConfig): Promise<Score[]> {
     g.scale.setScalar(1.5); scene.add(g);
     return g;
   };
+  // Night courses: a soft pool of light for each lamp, drawn on the water.
+  const glowTex = (() => {
+    const c = document.createElement('canvas'); c.width = c.height = 128;
+    const g = c.getContext('2d')!, grad = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+    grad.addColorStop(0, 'rgba(255,255,255,0.9)'); grad.addColorStop(0.4, 'rgba(255,255,255,0.3)'); grad.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = grad; g.fillRect(0, 0, 128, 128);
+    return new THREE.CanvasTexture(c);
+  })();
+  const pool = (color: string, size: number) => {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(size, size), new THREE.MeshBasicMaterial({ map: glowTex, color, transparent: true, opacity: 0.42, blending: THREE.AdditiveBlending, depthWrite: false }));
+    m.rotation.x = -Math.PI / 2; m.position.y = 0.12;
+    return m;
+  };
+  const lamps: { k: Racer; light: THREE.PointLight; glow: THREE.Mesh }[] = [];
+  if (night) {
+    for (let i = 20; i < N; i += 30) {        // lanterns floating along the channel
+      const s = at(i, (i / 30) % 2 ? 6 : -6);
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 3, 5), mat('#3a3020')); post.position.set(s.x, 1.5, s.z);
+      const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.7, 8, 6), new THREE.MeshBasicMaterial({ color: '#ffd27a' })); bulb.position.set(s.x, 3.2, s.z);
+      const g = pool('#ffb85a', 26); g.position.x = s.x; g.position.z = s.z;
+      scene.add(post, bulb, g);      // lanterns are painted glow only: real lights are saved for the boats
+    }
+  }
+
   const racers: Racer[] = ctx.players.map((p, i) => {
     const per = boat ? 4 : 3, row = Math.floor(i / per), col = (i % per) - (per - 1) / 2, idx = (N - 5 - row * 5) % N, s = at(idx, col * (boat ? 4.4 : 3.2));
     return {
@@ -244,6 +273,10 @@ export async function runRace(ctx: Ctx, cfg: RaceConfig): Promise<Score[]> {
       idx, lap: -1, item: null, boost: 0, spin: 0, slow: 0, cool: 2, immune: 0, finish: null, off: false, ai: p.bot, skill: [0.7, 0.84, 0.97][ctx.botLevel] + Math.random() * [0.12, 0.14, 0.08][ctx.botLevel], lane: col * 2.5, useAt: 0, liveText: '', btnText: '',
     };
   });
+  if (night) for (const k of racers) {         // every boat carries a lamp that lights the water just ahead
+    const light = new THREE.PointLight('#fff1c9', 90, 22, 1.6), glow = pool('#fff1c9', 15);
+    scene.add(light, glow); lamps.push({ k, light, glow });
+  }
   const racerOf = new Map(racers.map((k) => [k.p.id, k]));
   const progress = (k: Racer) => k.lap * N + k.idx;
   const ranked = () => [...racers].sort((a, b) => (a.finish ?? 1e9) - (b.finish ?? 1e9) || progress(b) - progress(a));
@@ -404,7 +437,13 @@ export async function runRace(ctx: Ctx, cfg: RaceConfig): Promise<Score[]> {
       for (const k of racers) {
         k.mesh.position.set(k.x, boat ? Math.sin(t * 2.5 + k.x) * 0.12 : 0, k.z);
         k.mesh.rotation.y = k.th + (k.spin > 0 ? k.spin * 14 : 0);
-        k.mesh.scale.setScalar(k.slow > 0 ? 1 : 1.5); k.mesh.scale.z = k.boost > 0 ? 2 : k.mesh.scale.x;
+        k.mesh.scale.setScalar(k.slow > 0 ? 1 : 1.5);
+      }
+      for (const l of lamps) {
+        const ax = l.k.x + Math.sin(l.k.th) * 7, az = l.k.z + Math.cos(l.k.th) * 7;
+        l.light.position.set(ax, 3.5, az); l.glow.position.x = ax; l.glow.position.z = az;
+      }
+      for (const k of racers) { k.mesh.scale.z = k.boost > 0 ? 2 : k.mesh.scale.x;
       }
       renderer.render(scene, cam);
 

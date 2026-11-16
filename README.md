@@ -52,7 +52,7 @@ All 14 games from the plan are playable.
 | Speedway | Tilt Kart | 2–12 | 6 themed tracks (host picks), 3 items, 3 laps |
 | Speedway | Sky Slalom | 2–12 | 22 hoops, gold centres, gusts of wind |
 | Speedway | Snail Sprint | 2–12 | |
-| Lagoon | Riptide Regatta | 2–12 | Shares Tilt Kart's engine. Open water, 5 themed courses marked by buoys; waves, whirlpools, currents, rocks, swipe to boost |
+| Lagoon | Riptide Regatta | 2–12 | Shares Tilt Kart's engine. Open water, 6 themed courses marked by buoys, including a night course where each boat carries a lamp; waves, whirlpools, currents, rocks, swipe to boost |
 | Art Alley | Sketch & Switch | 3–12 | |
 | Art Alley | Fake Artist | 4–10 | |
 | Art Alley | Draw Your Racer | 2–12 | Draw a kart or boat, vote for best ride, then race it |

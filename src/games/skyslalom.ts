@@ -44,14 +44,6 @@ export const skyslalom: GameDef = {
     }
 
     // Planes.
-    const label = (p: Player) => {
-      const c = document.createElement('canvas'); c.width = 256; c.height = 64;
-      const g = c.getContext('2d')!;
-      g.fillStyle = p.color; g.strokeStyle = '#1b1220'; g.lineWidth = 5; g.beginPath(); g.roundRect(3, 3, 250, 58, 28); g.fill(); g.stroke();
-      g.fillStyle = '#1b1220'; g.font = 'bold 34px Trebuchet MS, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(`${p.shape} ${p.name}`, 128, 34, 236);
-      const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), depthTest: false })); s.scale.set(3.4, 0.85, 1); s.position.y = 1.3; s.renderOrder = 10;
-      return s;
-    };
     const paper = () => {      // a folded paper dart: two wings and a keel
       const g = new THREE.BufferGeometry();
       g.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, -2.2, -1.5, 0.25, 1, 0, 0, 1,   0, 0, -2.2, 0, 0, 1, 1.5, 0.25, 1,   0, 0, -2.2, 0, -0.6, 1, 0, 0, 1], 3));
@@ -61,7 +53,7 @@ export const skyslalom: GameDef = {
     const n = ctx.players.length;
     const planes: Plane[] = ctx.players.map((p, i) => {
       const g = new THREE.Group();
-      g.add(new THREE.Mesh(paper(), new THREE.MeshLambertMaterial({ color: p.color, side: THREE.DoubleSide, flatShading: true })), label(p));
+      g.add(new THREE.Mesh(paper(), new THREE.MeshLambertMaterial({ color: p.color, side: THREE.DoubleSide, flatShading: true })));
       scene.add(g);
       const x = n > 1 ? -XR * 0.8 + (i / (n - 1)) * XR * 1.6 : 0;
       return { p, mesh: g, x, y: 8 + (i % 3) * 3, vx: 0, vy: 0, tx: 0, ty: 0, score: 0, streak: 0, aimX: 0, aimY: 0, live: '' };
