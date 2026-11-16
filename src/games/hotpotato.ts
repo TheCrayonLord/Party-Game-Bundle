@@ -3,10 +3,11 @@ import { type Ctx, type GameDef } from '../host/ctx';
 import type { Player } from '../host/room';
 
 export const hotpotato: GameDef = {
-  meta: { id: 'hotpotato', name: 'Hot Potato Bomb', emoji: '💣', zone: 'Midway', blurb: 'Hold the bomb to score. Flick it away before it blows.', min: 3, max: 12,
+  meta: { id: 'hotpotato', name: 'Hot Potato Bomb', emoji: '💣', zone: 'Midway', blurb: 'Catch the bomb to score. Flick it away before it overheats.', min: 3, max: 12,
     howTo: [
       "💣 One phone has the bomb. Nobody knows how long the fuse is.",
-      "💰 You score points every second you HOLD it.",
+      "💰 You score while you hold it, but only for the first 2 seconds of each catch.",
+      "🔥 Hold it longer than 3 seconds and it OVERHEATS: the fuse burns three times as fast, in your hands.",
       "👉 FLICK it left or right to pass to a neighbour, or up to throw it across the circle.",
       "💥 Holding it when it blows? You’re out. Last one standing wins.",
     ] },
@@ -31,15 +32,19 @@ export const hotpotato: GameDef = {
     };
     const moveBomb = (p: Player) => { const s = seats.get(p.id)!; bombEl.style.left = s.style.left; bombEl.style.top = s.style.top; };
 
+    const PAY = 2, HOT = 3;      // seconds of a hold that score; seconds until the bomb overheats
     let round = 0;
     while (alive.length > 1) {
       round++;
       layout();
       let holder = pick(alive), held = 0, fuse = alive.length > 6 ? 5 + Math.random() * 6 : 8 + Math.random() * 9 /* big groups thin out faster */, botPass = 1 + Math.random() * 2.5;
-      banner.textContent = `Round ${round}: ${alive.length} left. The longer you hold it, the more you score…`;
+      const calm = `Round ${round}: ${alive.length} left. Catch it to score, then get rid of it!`;
+      banner.textContent = calm;
       moveBomb(holder);
       const give = (to: Player) => {
+        if (held > HOT) banner.textContent = calm;
         holder = to; held = 0; botPass = 0.8 + Math.random() * 2.8;
+        bombEl.classList.remove('hot');
         moveBomb(to);
         const key = ctx.key('bomb');
         for (const p of P) {
@@ -63,8 +68,10 @@ export const hotpotato: GameDef = {
       });
       await new Promise<void>((resolve) => {
         const stop = ctx.frame((dt) => {
-          fuse -= dt * SPEED; held += dt * SPEED;
-          add(holder, dt * 12);
+          const hot = held > HOT;
+          fuse -= dt * SPEED * (hot ? 3 : 1); held += dt * SPEED;
+          if (held < PAY) add(holder, dt * SPEED * 15);
+          if (held > HOT && !hot) { bombEl.classList.add('hot'); banner.textContent = `🔥 Overheating in ${holder.name}’s hands! The fuse is racing!`; }
           const pts = ring.querySelector<HTMLElement>(`[data-pts="${holder.id}"]`); if (pts) pts.textContent = String(Math.round(score.get(holder.id)!));
           bombEl.style.transform = `translate(-50%, -50%) scale(${1 + Math.sin(performance.now() / (fuse < 4 ? 40 : 110)) * 0.12})`;
           if ((holder.bot || !holder.connected) && held > botPass) pass(pick(['left', 'right', 'up']));
@@ -72,6 +79,7 @@ export const hotpotato: GameDef = {
         });
       });
       off();
+      bombEl.classList.remove('hot');
       const dead = holder;
       ctx.comment('out', dead, true);
       alive = alive.filter((p) => p !== dead);

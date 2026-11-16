@@ -27,7 +27,7 @@ await page.waitForSelector('canvas', { timeout: 30000 });
 await page.waitForFunction(() => /Hoops left: (20|19)/.test(document.querySelector('.kart-board')?.textContent || ''), null, { timeout: 60000 });   // hoops pass every two seconds
 await page.keyboard.press('Escape');
 await page.waitForSelector('.pause');
-check('four main options', (await page.$$('.pause-opt')).length === 4);
+check('four main options plus End round', (await page.$$('.pause-opt')).length === 5 && await page.$('[data-pause="leave"]'));
 const frozen = async () => { const a = await page.textContent('.kart-board'); await page.waitForTimeout(3200); return a === await page.textContent('.kart-board'); };
 check('game stands still while paused', await frozen());
 await snap(page, 'pause');

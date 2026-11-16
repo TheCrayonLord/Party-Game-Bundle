@@ -48,11 +48,11 @@ export function initPause(room: Room, hooks: PauseHooks) {
     box.replaceChildren(...[
       h('h1.pause-title', '⏸ Paused'),
       h('button.btn.pause-opt', { onclick: close, 'data-pause': 'resume' }, '▶ Resume game'),
+      hooks.onRide() ? h('button.btn.pause-opt', { onclick: then(hooks.leaveRide), 'data-pause': 'leave', title: 'Stop this minigame and go back to game selection' }, '⏹ End round') : null,
       h('button.btn.pause-opt', { onclick: () => { page = 'settings'; draw(); }, 'data-pause': 'settings' }, '⚙ Settings'),
       h('button.btn.pause-opt', { onclick: then(hooks.endGame), 'data-pause': 'end' }, '🏆 End game'),
       h('button.btn.pause-opt', { onclick: then(hooks.desktop), 'data-pause': 'desktop' }, '🚪 Return to desktop'),
-      hooks.onRide() ? h('button.pause-link', { onclick: then(hooks.leaveRide), 'data-pause': 'leave' }, 'Leave this ride and go back to the park') : null,
-      h('p.pause-hint', 'End game closes the park for the night: the overall podium, the grand prize and the credits.'),
+      h('p.pause-hint', (hooks.onRide() ? 'End round stops this minigame and returns to game selection. ' : '') + 'End game closes the park for the night: the overall podium, the grand prize and the credits.'),
     ].filter(Boolean) as HTMLElement[]);
   };
 

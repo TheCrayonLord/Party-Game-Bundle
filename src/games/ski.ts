@@ -21,7 +21,7 @@ const HILLS: Hill[] = [
 
 interface Skier {
   p: Player; g: THREE.Group; cam: THREE.PerspectiveCamera; x: number; z: number; a: number; v: number; steer: number; tuck: boolean;
-  stun: number; air: number; boost: number; gates: number; missed: number; missFlash: number; nextGate: number; finish: number | null; hud: HTMLElement; live: string; skill: number;
+  stun: number; air: number; boost: number; gates: number; missed: number; missFlash: number; nextGate: number; finish: number | null; hud: HTMLElement; line: HTMLElement; miss: HTMLElement; live: string; skill: number;
 }
 
 export const ski: GameDef = {
@@ -154,10 +154,11 @@ async function heat(ctx: Ctx, hill: Hill, racers: Player[]): Promise<Map<string,
     for (const sx of [-0.3, 0.3]) { add(new THREE.BoxGeometry(0.3, 0.9, 0.4), '#2b1d2e', sx, 0.6, 0.05); add(new THREE.BoxGeometry(0.22, 0.08, 2.8), '#e8b23a', sx, 0.1, -0.2); }
     scene.add(g);
     if (hill.night) { const lamp = new THREE.PointLight('#fff1c9', 130, 34, 1.5); lamp.position.set(0, 3, -8); g.add(lamp); }
-    const hud = h('div.ski-hud', { style: { borderColor: p.color } });
+    const line = h('div', { style: { display: 'contents' } }), miss = h('span.ski-miss', { hidden: true }, `Missed gate! +${MISS}s`);
+    const hud = h('div.ski-hud', { style: { borderColor: p.color } }, line, miss);
     huds.append(hud);
     const x = n > 1 ? -9 + (i / (n - 1)) * 18 : 0;
-    return { p, g, cam: new THREE.PerspectiveCamera(62, 1, 0.5, 400), x, z: 0, a: 0, v: 0, steer: 0, tuck: false, stun: 0, air: 0, boost: 0, gates: 0, missed: 0, missFlash: 0, nextGate: 0, finish: null, hud, live: '', skill: [0.78, 0.88, 0.97][p.level] + Math.random() * 0.06 };
+    return { p, g, cam: new THREE.PerspectiveCamera(62, 1, 0.5, 400), x, z: 0, a: 0, v: 0, steer: 0, tuck: false, stun: 0, air: 0, boost: 0, gates: 0, missed: 0, missFlash: 0, nextGate: 0, finish: null, hud, line, miss, live: '', skill: [0.78, 0.88, 0.97][p.level] + Math.random() * 0.06 };
   });
   const by = new Map(skiers.map((s) => [s.p.id, s]));
   ctx.all({ type: 'tilt', key: ctx.key('ski'), holds: [{ id: 'tuck', label: '⬇️ HOLD to tuck' }] }, racers);
@@ -245,8 +246,8 @@ async function heat(ctx: Ctx, hill: Hill, racers: Player[]): Promise<Map<string,
           const place = order.indexOf(s) + 1, left = Math.max(0, Math.round(LENGTH + s.z));
           const pen = s.missed * MISS;
           const text = s.finish != null ? `🏁 ${(s.finish + pen).toFixed(1)}s${pen ? ` (incl. +${pen}s)` : ''}` : `${ordinal(place)} · ${left}m to go`;
-          s.hud.replaceChildren(...[h('span.badge', { style: { background: s.p.color } }, `${s.p.shape} ${s.p.name}`), h('span.ski-place', text), h('span.ski-speed', s.finish != null ? '' : `${Math.round(s.v * 2.4)} km/h · 🚩${s.gates}${pen ? ` · ⏱ +${pen}s` : ''}`),
-            s.missFlash > 0 && s.finish == null ? h('span.ski-miss', `Missed gate! +${MISS}s`) : null].filter(Boolean) as HTMLElement[]);
+          s.miss.hidden = !(s.missFlash > 0 && s.finish == null);      // showing it once plays its pop once
+          s.line.replaceChildren(h('span.badge', { style: { background: s.p.color } }, `${s.p.shape} ${s.p.name}`), h('span.ski-place', text), h('span.ski-speed', s.finish != null ? '' : `${Math.round(s.v * 2.4)} km/h · 🚩${s.gates}${pen ? ` · ⏱ +${pen}s` : ''}`));
           const info = s.stun > 0 ? 'Wipeout!' : s.missFlash > 0 ? `Missed a gate: +${MISS}s on your time` : s.boost > 0 ? 'Through the flags: boost!' : Math.abs(s.x) > HALF ? 'Deep snow! Get back on the piste.' : '';
           const live = text + info;
           if (live !== s.live) { s.live = live; ctx.live(s.p, { big: text, info }); }

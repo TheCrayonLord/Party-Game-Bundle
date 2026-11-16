@@ -263,6 +263,8 @@ body.host { font-size: clamp(14px, 1.5vw, 26px); }
 .seg button + button { border-left: .12em solid var(--ink); }
 .seg button.on { background: var(--red); color: var(--cream); }
 .guest-skill { margin-top: .2em; border: .1em solid rgba(0,0,0,.5); border-radius: 999px; background: rgba(255,255,255,.7); color: #1b1220; font-size: .6em; font-weight: 800; padding: .05em .6em; }
+.hp-bomb.hot { filter: drop-shadow(0 0 .25em #ff3b1f) drop-shadow(0 0 .6em #ff9a1f) saturate(2); }
+.ski-miss[hidden] { display: none; }
 .ski-miss { position: absolute; left: 50%; top: 28%; transform: translateX(-50%); background: var(--red); color: #fff; font-family: var(--display); font-size: 1.3em; padding: .1em .7em; border-radius: 999px; border: .1em solid #fff; animation: pop .25s; white-space: nowrap; }
 
 /* ---------- closing ceremony ---------- */
@@ -300,3 +302,10 @@ body.host { font-size: clamp(14px, 1.5vw, 26px); }
 .credits-section h2 { font-family: var(--display); color: var(--mustard); font-size: 2em; margin: 0 0 .4em; }
 .credits-section p { margin: .35em 0; font-size: 1.15em; }
 .credits-end { align-self: center; display: flex; flex-direction: column; align-items: center; gap: .8em; cursor: default; animation: pop .4s; }
+.sketch-tiles { flex-wrap: wrap; gap: .6em; justify-content: center; }
+.sketch-tile { background: var(--cream); color: var(--ink); border: .15em solid var(--ink); border-radius: .7em; padding: .4em; display: flex; flex-direction: column; align-items: center; gap: .2em; max-width: 11em; animation: pop .3s; }
+.sketch-tile canvas { width: 7em; height: 7em; box-shadow: none; }
+.sketch-tile-text { font-size: .65em; text-align: center; }
+.sketch-tile .pts { color: var(--red); font-size: 1em; }
+.sketch-tile .who { display: flex; flex-wrap: wrap; gap: .2em; justify-content: center; font-size: .5em; }
+.sketch-tiles.many { font-size: .72em; }
