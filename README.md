@@ -17,7 +17,9 @@ Open the **Network** address that Vite prints (not `localhost`) on the host comp
 
 - **No phones handy?** Click **+ Add a bot** in the lobby, or open `/?bots=7` to fill the room. Bots play every game.
 - **Tilt steering needs HTTPS.** Over plain `http://` on your home network, phones fall back to drag-to-steer. Deploy to GitHub Pages (below) to get real tilt.
-- Press **Esc** on the host to leave a game. Click a guest in the lobby to remove them.
+- Press **Esc** on the host (or the small ⏸ button, top right) to pause: Resume game, Settings, End game, Return to desktop. While a ride is running the menu also offers to leave just that ride. Click a guest in the lobby to remove them.
+- **End game** closes the park for the night: curtains, the overall podium, a giant teddy bear for the winner, then credits listing the night's highlights.
+- **Settings** has full screen, theme (only Retro Carnival for now), four volume levels (saved, but there is no sound in the game yet), regular/performance menu, and each bot's skill.
 
 ## Putting it online
 
@@ -41,7 +43,7 @@ The game picks automatically: if the page is served by the relay server it uses 
 | WebRTC transport and relay transport | Both work; automatic fall-back from one to the other mid-session is not built yet |
 | Sound | None yet: waiting on a decision about the samples |
 | How-to-play page | Shown before the first match of each game in a session; the host player taps to continue |
-| Bot skill | Easy / Normal / Hard button in the lobby (affects the racing, flying, snail, trivia and ghost-train bots) |
+| Bot skill | Easy / Normal / Hard per bot: in Settings, or by clicking the skill on a bot's card in the plain-list lobby. The lobby button sets all bots at once. Affects the racing, flying, skiing, snail, trivia and ghost-train bots |
 | Placements screen | After every game: a podium revealed third to first, then the table with prize tickets and arrows showing who moved up or down overall. Team and hidden-role games get a banner instead |
 | Mascot | Gus the Goldfish, Sprocket the Strongman Bear, Colonel Kernel and Madame Bulb take turns hosting, one per session (emoji stand-ins and speech bubbles for now). They remark on lead changes, crashes, eliminations and whoever is stuck in last during games, and on winners, streaks and close rivalries afterwards. Click the mascot in the lobby to swap, or add `?mascot=gus`, `sprocket`, `kernel` or `bulb` |
 
@@ -96,4 +98,5 @@ node tests/smoke.mjs fib 3 1 4     # game id, phones, bots, speed-up
 node tests/bots.mjs 12 6           # every game with a full room of bots
 node tests/reconnect.mjs           # a phone drops and comes back
 node tests/park.mjs                # walk-around park: join, walk to a ride, game starts
+node tests/pause.mjs               # pause menu, settings, per-bot skill, closing ceremony
 ```

@@ -10,6 +10,7 @@ const HALF = 22;               // half-width of the groomed piste
 const SLOPE = 0.22;            // drop per unit travelled
 const Y = (z: number) => z * SLOPE;      // the hill: forward is -z, and downhill
 const VMAX = 31, TUCK = 41;
+const MISS = 1;                // seconds added to your time for every gate you miss
 
 interface Hill { name: string; sky: string; snow: string; light: string; ambient: number; trees: number; rocks: number; night?: boolean }
 const HILLS: Hill[] = [
@@ -20,7 +21,7 @@ const HILLS: Hill[] = [
 
 interface Skier {
   p: Player; g: THREE.Group; cam: THREE.PerspectiveCamera; x: number; z: number; a: number; v: number; steer: number; tuck: boolean;
-  stun: number; air: number; boost: number; gates: number; nextGate: number; finish: number | null; hud: HTMLElement; live: string; skill: number;
+  stun: number; air: number; boost: number; gates: number; missed: number; missFlash: number; nextGate: number; finish: number | null; hud: HTMLElement; live: string; skill: number;
 }
 
 export const ski: GameDef = {
@@ -30,7 +31,8 @@ export const ski: GameDef = {
       '⛷️ You see your own skier from behind, in your own part of the screen.',
       '↔️ TILT to carve left and right. Hard turns scrub off speed.',
       '⬇️ HOLD the tuck button to go faster. You turn less while tucked.',
-      '🚩 Ski between the flags for a boost. Dodge trees and rocks, hit the ramps.',
+      `🚩 Ski between the flags for a boost. Every gate you miss adds ${MISS} second to your time.`,
+      '🌲 Dodge trees and rocks, and hit the ramps.',
     ],
   },
   async run(ctx: Ctx) {
@@ -48,7 +50,7 @@ export const ski: GameDef = {
     const heatCount = Math.ceil(P.length / 4), heats: Player[][] = Array.from({ length: heatCount }, () => []);
     P.forEach((p, i) => heats[i % heatCount].push(p));
 
-    const times = new Map<string, { time: number | null; dist: number }>();
+    const times = new Map<string, Run>();
     for (const [i, racers] of heats.entries()) {
       if (heatCount > 1) {
         ctx.show(h('div.col.pad', h('h1.big', `Heat ${i + 1} of ${heatCount}`), h('div.row', ...racers.map((p) => h('span.badge', { style: { background: p.color, fontSize: '1.6em' } }, `${p.avatar} ${p.name}`))), h('p.sub', 'Fastest times across all heats win.')));
@@ -61,13 +63,16 @@ export const ski: GameDef = {
       for (const [id, r] of await heat(ctx, hill, racers)) times.set(id, r);
     }
     const order = [...P].sort((a, b) => (times.get(a.id)!.time ?? 1e9) - (times.get(b.id)!.time ?? 1e9) || times.get(b.id)!.dist - times.get(a.id)!.dist);
-    const scores: Score[] = order.map((p, i) => { const r = times.get(p.id)!; return { id: p.id, score: order.length - i, label: r.time != null ? `${r.time.toFixed(1)}s` : `fell ${Math.round(LENGTH - r.dist)}m short` }; });
+    const scores: Score[] = order.map((p, i) => { const r = times.get(p.id)!; return { id: p.id, score: order.length - i, label: r.time != null ? `${r.time.toFixed(1)}s${r.missed ? ` (${r.missed} missed, +${r.missed * MISS}s)` : ''}` : `fell ${Math.round(LENGTH - r.dist)}m short` }; });
     return { scores };
   },
 };
 
+/** A finished run: the time including penalties for missed gates (null if they never reached the bottom). */
+interface Run { time: number | null; dist: number; missed: number }
+
 /** One race of up to four skiers. Resolves with each skier's time (or how far they got). */
-async function heat(ctx: Ctx, hill: Hill, racers: Player[]): Promise<Map<string, { time: number | null; dist: number }>> {
+async function heat(ctx: Ctx, hill: Hill, racers: Player[]): Promise<Map<string, Run>> {
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setPixelRatio(racers.length > 1 ? 1 : Math.min(devicePixelRatio, 1.5));     // several views at once: keep it light
   renderer.setScissorTest(true);
@@ -152,7 +157,7 @@ async function heat(ctx: Ctx, hill: Hill, racers: Player[]): Promise<Map<string,
     const hud = h('div.ski-hud', { style: { borderColor: p.color } });
     huds.append(hud);
     const x = n > 1 ? -9 + (i / (n - 1)) * 18 : 0;
-    return { p, g, cam: new THREE.PerspectiveCamera(62, 1, 0.5, 400), x, z: 0, a: 0, v: 0, steer: 0, tuck: false, stun: 0, air: 0, boost: 0, gates: 0, nextGate: 0, finish: null, hud, live: '', skill: [0.78, 0.88, 0.97][ctx.botLevel] + Math.random() * 0.06 };
+    return { p, g, cam: new THREE.PerspectiveCamera(62, 1, 0.5, 400), x, z: 0, a: 0, v: 0, steer: 0, tuck: false, stun: 0, air: 0, boost: 0, gates: 0, missed: 0, missFlash: 0, nextGate: 0, finish: null, hud, live: '', skill: [0.78, 0.88, 0.97][p.level] + Math.random() * 0.06 };
   });
   const by = new Map(skiers.map((s) => [s.p.id, s]));
   ctx.all({ type: 'tilt', key: ctx.key('ski'), holds: [{ id: 'tuck', label: '⬇️ HOLD to tuck' }] }, racers);
@@ -187,6 +192,7 @@ async function heat(ctx: Ctx, hill: Hill, racers: Player[]): Promise<Map<string,
     }
     while (s.nextGate < gates.length && gates[s.nextGate].z > s.z) {       // crossed a gate line: through the flags or not?
       if (Math.abs(gates[s.nextGate].x - s.x) < 4.6) { s.gates++; s.boost = 1.2; }
+      else if (s.finish == null) { s.missed++; s.missFlash = 1.6; }
       s.nextGate++;
     }
     if (s.finish != null) { s.v = Math.max(0, s.v - 26 * dt); s.a *= 1 - 3 * dt; }
@@ -201,7 +207,7 @@ async function heat(ctx: Ctx, hill: Hill, racers: Player[]): Promise<Map<string,
       for (const r of ramps) if (s.air <= 0 && Math.abs(r.z - s.z) < 3 && Math.abs(r.x - s.x) < 4) { s.air = 1; s.v += 5; }
       for (const o of solids) if (s.air <= 0 && (o.x - s.x) ** 2 + (o.z - s.z) ** 2 < o.r * o.r) { s.stun = 1.2; s.x += s.x >= o.x ? 2.6 : -2.6; s.a = 0; ctx.comment('crash', s.p); }
     }
-    s.boost -= dt; if (s.air > 0) s.air -= dt;
+    s.boost -= dt; s.missFlash -= dt; if (s.air > 0) s.air -= dt;
     s.x = clamp(s.x + Math.sin(s.a) * s.v * dt, -HALF - 9, HALF + 9);
     s.z -= Math.cos(s.a) * s.v * dt;
     if (s.z <= -LENGTH && s.finish == null) { s.finish = clock; first ??= clock; }
@@ -237,9 +243,11 @@ async function heat(ctx: Ctx, hill: Hill, racers: Player[]): Promise<Map<string,
         if (clock > 3) ctx.standings(order.filter((s) => s.finish == null).map((s) => s.p));
         for (const s of skiers) {
           const place = order.indexOf(s) + 1, left = Math.max(0, Math.round(LENGTH + s.z));
-          const text = s.finish != null ? `🏁 ${s.finish.toFixed(1)}s` : `${ordinal(place)} · ${left}m to go`;
-          s.hud.replaceChildren(h('span.badge', { style: { background: s.p.color } }, `${s.p.shape} ${s.p.name}`), h('span.ski-place', text), h('span.ski-speed', s.finish != null ? '' : `${Math.round(s.v * 2.4)} km/h · 🚩${s.gates}`));
-          const info = s.stun > 0 ? 'Wipeout!' : s.boost > 0 ? 'Through the flags: boost!' : Math.abs(s.x) > HALF ? 'Deep snow! Get back on the piste.' : '';
+          const pen = s.missed * MISS;
+          const text = s.finish != null ? `🏁 ${(s.finish + pen).toFixed(1)}s${pen ? ` (incl. +${pen}s)` : ''}` : `${ordinal(place)} · ${left}m to go`;
+          s.hud.replaceChildren(...[h('span.badge', { style: { background: s.p.color } }, `${s.p.shape} ${s.p.name}`), h('span.ski-place', text), h('span.ski-speed', s.finish != null ? '' : `${Math.round(s.v * 2.4)} km/h · 🚩${s.gates}${pen ? ` · ⏱ +${pen}s` : ''}`),
+            s.missFlash > 0 && s.finish == null ? h('span.ski-miss', `Missed gate! +${MISS}s`) : null].filter(Boolean) as HTMLElement[]);
+          const info = s.stun > 0 ? 'Wipeout!' : s.missFlash > 0 ? `Missed a gate: +${MISS}s on your time` : s.boost > 0 ? 'Through the flags: boost!' : Math.abs(s.x) > HALF ? 'Deep snow! Get back on the piste.' : '';
           const live = text + info;
           if (live !== s.live) { s.live = live; ctx.live(s.p, { big: text, info }); }
         }
@@ -249,10 +257,11 @@ async function heat(ctx: Ctx, hill: Hill, racers: Player[]): Promise<Map<string,
     });
   });
   ctx.clearTimer();
-  const best = [...skiers].sort((a, b) => (a.finish ?? 1e9) - (b.finish ?? 1e9) || a.z - b.z)[0];
+  const total = (s: Skier) => (s.finish != null ? s.finish + s.missed * MISS : null);
+  const best = [...skiers].sort((a, b) => (total(a) ?? 1e9) - (total(b) ?? 1e9) || a.z - b.z)[0];
   overlay.textContent = `${best.p.avatar} ${best.p.name} takes the heat!`;
   ctx.wait(racers, 'Run over!', '', '🏁');
   await ctx.sleep(3);
   dispose();
-  return new Map(skiers.map((s) => [s.p.id, { time: s.finish, dist: Math.min(LENGTH, -s.z) }]));
+  return new Map(skiers.map((s) => [s.p.id, { time: total(s), dist: Math.min(LENGTH, -s.z), missed: s.missed }]));
 }

@@ -8,19 +8,24 @@ import { Cancelled, Ctx, type GameDef, type GameResult } from './ctx';
 import { GAMES } from '../games';
 import { bubble, line, mascot, nextMascot, say } from './mascot';
 import { Park } from './park';
+import { later } from './clock';
+import { BOT_LEVELS, initPause } from './pause';
+import { finale, newNight } from './finale';
+import { setFullscreen } from './settings';
 
 const app = document.getElementById('app')!;
 const TICKETS = [100, 80, 65, 55, 48, 42, 37, 33, 30, 27, 25, 23];
 
 let room: Room;
 let ctx: Ctx | null = null;
-let mode: 'lobby' | 'game' | 'results' = 'lobby';
+let mode: 'boot' | 'lobby' | 'game' | 'results' | 'ending' | 'closed' = 'boot';
+let night = newNight();                  // what happened tonight, for the closing credits
+let closing: ReturnType<typeof finale> | null = null;
 let resultsDone: (() => void) | null = null;
 type Menu = 'park' | 'list';
 let menu: Menu = 'list';          // 'park' = walk-around carnival (regular start), 'list' = plain list (performance start)
 let park: Park | null = null;
 const explained = new Set<string>();     // games whose how-to-play page has been shown this session
-const BOT_LEVELS = ['Easy', 'Normal', 'Hard'] as const;
 let botLevel = (Number(qs.get('botlevel') ?? (() => { try { return localStorage.getItem('pgb-botlevel'); } catch { return null; } })() ?? 1) || 0) as 0 | 1 | 2;
 if (!(botLevel in BOT_LEVELS)) botLevel = 1;
 
@@ -54,9 +59,20 @@ async function boot() {
     else if (mode === 'lobby' && park) park.input(p, d);
     else if (mode === 'lobby' && p.vip && d?.id === 'pick') start(GAMES.find((g) => g.meta.id === d.v));
     else if (mode === 'results' && p.vip && d?.id === 'back') resultsDone?.();
+    else if (mode === 'ending') closing?.input(p, d);
   };
-  for (let i = 0; i < Math.min(MAX_PLAYERS, Number(qs.get('bots')) || 0); i++) room.addBot();
-  addEventListener('keydown', (e) => { if (e.code === 'Escape' && mode === 'game') quitGame(); });
+  for (let i = 0; i < Math.min(MAX_PLAYERS, Number(qs.get('bots')) || 0); i++) room.addBot(botLevel);
+  initPause(room, {
+    available: () => mode === 'lobby' || mode === 'game' || mode === 'results',
+    onRide: () => mode === 'game' || mode === 'results',
+    leaveRide,
+    endGame,
+    desktop,
+    menu: () => menu,
+    setMenu: (m) => { if (m === menu) return; menu = m; if (mode === 'lobby') { park?.destroy(); park = null; lobby(); } },
+    canEditGuests: () => mode === 'lobby',
+    botsChanged: () => { if (mode === 'lobby') lobby(); },
+  });
   lobby();
   const auto = qs.get('game'); // ?game=id starts straight away; handy for testing with ?bots=
   if (auto) start(GAMES.find((g) => g.meta.id === auto));
@@ -90,8 +106,10 @@ function lobby() {
       h('div.code', room.net.code), h('div.ticket-serial', `No. ${String(Math.abs([...room.net.code].reduce((a, ch) => a * 31 + ch.charCodeAt(0), 7)) % 1000000).padStart(6, '0')} · GOOD FOR ONE NIGHT`))),
     local ? h('div.warn', 'Phones can’t reach “localhost”. Open this page using this computer’s network address instead.') : null,
   );
-  const botRow = h('div.bot-row', h('button.btn.small', { onclick: () => room.addBot(), disabled: n >= MAX_PLAYERS }, '+ Add a bot'),
-    h('button.btn.small', { title: 'How good the bots are', onclick: () => { botLevel = ((botLevel + 1) % 3) as 0 | 1 | 2; try { localStorage.setItem('pgb-botlevel', String(botLevel)); } catch { /* storage blocked */ } lobby(); } }, `Bot skill: ${BOT_LEVELS[botLevel]}`),
+  const bots = room.players.filter((p) => p.bot), mixed = bots.some((p) => p.level !== bots[0].level);
+  const botRow = h('div.bot-row', h('button.btn.small', { onclick: () => room.addBot(botLevel), disabled: n >= MAX_PLAYERS }, '+ Add a bot'),
+    h('button.btn.small', { title: 'Sets every bot to the same skill. Each bot can be set on its own in Settings (Esc)' + (menu === 'list' ? ', or by clicking the skill on its card.' : '.'),
+      onclick: () => { botLevel = ((botLevel + 1) % 3) as 0 | 1 | 2; try { localStorage.setItem('pgb-botlevel', String(botLevel)); } catch { /* storage blocked */ } for (const p of bots) p.level = botLevel; lobby(); } }, `All bots: ${mixed ? 'Mixed' : BOT_LEVELS[bots[0]?.level ?? botLevel]}`),
     h('button.btn.small', { title: 'Switch between the walk-around park and the plain list', onclick: () => { menu = menu === 'park' ? 'list' : 'park'; park?.destroy(); park = null; lobby(); } }, menu === 'park' ? '📋 Plain list' : '🎡 Walk the park'));
 
   if (menu === 'park') {
@@ -104,7 +122,8 @@ function lobby() {
   const guests = h('div.guests',
     h('h2', n ? `Guests in the park (${n}/${MAX_PLAYERS})` : 'Scan to get your ticket'),
     h('div.guest-grid', ...room.players.map((p) => h('div.guest' + (p.connected ? '' : '.away'), { title: 'Click to remove', onclick: () => room.remove(p), style: { background: p.color } },
-      h('div.guest-av', p.avatar), h('div.guest-name', p.name), h('div.guest-meta', `${p.shape} ${p.tickets} 🎟️${p.vip ? ' · host' : ''}${p.bot ? ' · bot' : ''}`)))),
+      h('div.guest-av', p.avatar), h('div.guest-name', p.name), h('div.guest-meta', `${p.shape} ${p.tickets} 🎟️${p.vip ? ' · host' : ''}${p.bot ? ' · bot' : ''}`),
+      p.bot ? h('button.guest-skill', { title: 'Click to change this bot’s skill', 'data-level': String(p.level), onclick: (e: Event) => { e.stopPropagation(); p.level = ((p.level + 1) % 3) as 0 | 1 | 2; lobby(); } }, BOT_LEVELS[p.level]) : null))),
     botRow,
   );
 
@@ -134,7 +153,6 @@ async function start(game: GameDef | undefined) {
   park?.destroy(); park = null;       // only one 3D scene is ever alive
   const players = [...room.players];
   const c = (ctx = new Ctx(room, app, players, game.meta));
-  c.botLevel = botLevel;
   let result: GameResult | null = null;
   try {
     c.wait(players, game.meta.name, game.meta.blurb, game.meta.emoji);
@@ -152,13 +170,50 @@ async function start(game: GameDef | undefined) {
     if (!(e instanceof Cancelled)) { console.error(e); result = null; }
   }
   c.destroy();
+  for (const [id, k] of c.moments.crash) night.crashes.set(id, (night.crashes.get(id) || 0) + k);
+  for (const [id, k] of c.moments.out) night.outs.set(id, (night.outs.get(id) || 0) + k);
   if (ctx !== c) return;
   ctx = null;
   if (result) await results(game, result, players);
+  if (mode === 'game' || mode === 'results') lobby();
+}
+
+/** Abandons the ride in progress (or its results screen) and goes back to the park. */
+function leaveRide() {
+  if (mode === 'results') return resultsDone?.();
+  if (mode !== 'game') return;
+  ctx?.destroy(); ctx = null; lobby();
+}
+
+/** Closes the park for the night: curtains, the overall podium, the grand prize and the credits. */
+async function endGame() {
+  if (mode !== 'lobby' && mode !== 'game' && mode !== 'results') return;
+  const was = mode;
+  mode = 'ending';
+  ctx?.destroy(); ctx = null;
+  if (was === 'results') resultsDone?.();
+  park?.destroy(); park = null;
+  closing = finale(app, room, night);
+  const next = await closing.done;
+  closing = null;
+  if (next === 'desktop') return desktop();
+  if (next === 'fresh') { for (const p of room.players) { p.tickets = 0; room.welcome(p); } night = newNight(); streaks.clear(); nextMascot(); }
+  mode = 'lobby';
   lobby();
 }
 
-function quitGame() { ctx?.destroy(); ctx = null; lobby(); }
+/** Leaves the game altogether. A browser tab can only close itself if a script opened it, so there is a fallback screen. */
+function desktop() {
+  mode = 'closed';
+  ctx?.destroy(); ctx = null;
+  park?.destroy(); park = null;
+  for (const p of room.players) room.setView(p, { type: 'wait', key: 'closed', title: 'The park is closed', text: 'Thanks for coming!', emoji: '🌙' });
+  setFullscreen(false);
+  setTimeout(() => {
+    window.close();
+    app.replaceChildren(h('div.center', h('h1.big', 'The park is closed'), h('p.sub', 'You can close this tab now.'), h('button.btn', { onclick: () => location.reload() }, 'Open the park again')));
+  }, 300);
+}
 
 const streaks = new Map<string, number>();     // wins in a row, per player, for the mascot to gloat about
 
@@ -177,7 +232,12 @@ function results(game: GameDef, r: GameResult, players: Player[]): Promise<void>
   const after = overall();
   // Team games and hidden-role games set their own ticket amounts; they get a banner instead of a podium.
   const team = !!r.coop || rows.every((row) => row.s?.tickets != null);
-  for (const row of rows) streaks.set(row.p.id, !team && row.rank === 0 ? (streaks.get(row.p.id) || 0) + 1 : 0);
+  for (const row of rows) {
+    const run = !team && row.rank === 0 ? (streaks.get(row.p.id) || 0) + 1 : 0;
+    streaks.set(row.p.id, run);
+    night.bestStreak.set(row.p.id, Math.max(night.bestStreak.get(row.p.id) || 0, run));
+  }
+  night.played.push({ game: game.meta, team, headline: r.headline, rows: rows.map((row) => ({ id: row.p.id, name: row.p.name, rank: row.rank, won: row.won })) });
 
   // What the mascot has to say about it.
   const champ = rows[0].p, loser = rows[rows.length - 1].p, standing = [...room.players].sort((a, b) => b.tickets - a.tickets);
@@ -206,8 +266,8 @@ function results(game: GameDef, r: GameResult, players: Player[]): Promise<void>
     h('button.btn', { onclick: () => resultsDone?.() }, 'Back to the park'));
   app.replaceChildren(screen);
   // Reveal: third, second, a pause, then first; after that the table and the mascot.
-  const timers: number[] = [];
-  const at = (sec: number, fn: () => void) => timers.push(window.setTimeout(fn, (sec * 1000) / SPEED));
+  const timers: (() => void)[] = [];      // made with later(), so the pause menu freezes the reveal too
+  const at = (sec: number, fn: () => void) => timers.push(later((sec * 1000) / SPEED, fn));
   if (podium) {
     at(0.6, () => podium.querySelector('.r3')?.classList.add('show'));
     at(1.8, () => podium.querySelector('.r2')?.classList.add('show'));
@@ -222,7 +282,7 @@ function results(game: GameDef, r: GameResult, players: Player[]): Promise<void>
       : { type: 'wait', key: 'results', title, text, emoji: !team && row.rank === 0 ? '🏆' : '🎟️' });
   }
   return new Promise((resolve) => {
-    const t = setTimeout(() => resultsDone?.(), room.vip ? 75000 : 14000 / SPEED);
-    resultsDone = () => { clearTimeout(t); timers.forEach(clearTimeout); resultsDone = null; resolve(); };
+    timers.push(later(room.vip ? 75000 : 14000 / SPEED, () => resultsDone?.()));
+    resultsDone = () => { timers.forEach((cancel) => cancel()); resultsDone = null; resolve(); };
   });
 }

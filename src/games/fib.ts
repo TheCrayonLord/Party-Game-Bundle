@@ -41,7 +41,7 @@ export const fib: GameDef = {
       ctx.show(h('div.col.pad', prompt, h('div.row', ...order.map((o) => h('div.answer', o.text.toUpperCase()))), h('p.sub', 'Which one is TRUE? Vote on your phone.')));
       const vkey = ctx.key('vote');
       const votes = await ctx.collect(P, (p) => ({ type: 'choice', key: vkey, id: vkey, prompt: 'Which is the truth?', sub: q.q, options: order.filter((o) => !o.authors.includes(p.id)).map((o) => ({ id: o.id, label: o.text.toUpperCase() })) }), 30,
-        { bot: (_p, v) => (v.type === 'choice' ? (Math.random() < [0.2, 0.4, 0.65][ctx.botLevel] && v.options.some((o) => o.id === 'truth') ? 'truth' : pick(v.options).id) : null) });
+        { bot: (p, v) => (v.type === 'choice' ? (Math.random() < [0.2, 0.4, 0.65][p.level] && v.options.some((o) => o.id === 'truth') ? 'truth' : pick(v.options).id) : null) });
       const t = tally(votes);
 
       // Reveal lies that fooled someone first, the truth last.

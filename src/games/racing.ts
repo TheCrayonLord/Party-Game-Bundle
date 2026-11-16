@@ -255,7 +255,7 @@ export async function runRace(ctx: Ctx, cfg: RaceConfig): Promise<Score[]> {
     const per = boat ? 4 : 3, row = Math.floor(i / per), col = (i % per) - (per - 1) / 2, idx = (N - 5 - row * 5) % N, s = at(idx, col * (boat ? 4.4 : 3.2));
     return {
       p, mesh: build(p), x: s.x, z: s.z, th: Math.atan2(T[idx].x, T[idx].z), vx: 0, vz: 0, steer: 0,
-      idx, lap: -1, item: null, boost: 0, spin: 0, slow: 0, cool: 2, immune: 0, finish: null, off: false, ai: p.bot, skill: [0.7, 0.84, 0.97][ctx.botLevel] + Math.random() * [0.12, 0.14, 0.08][ctx.botLevel], lane: col * 2.5, useAt: 0, liveText: '', btnText: '',
+      idx, lap: -1, item: null, boost: 0, spin: 0, slow: 0, cool: 2, immune: 0, finish: null, off: false, ai: p.bot, skill: [0.7, 0.84, 0.97][p.level] + Math.random() * [0.12, 0.14, 0.08][p.level], lane: col * 2.5, useAt: 0, liveText: '', btnText: '',
     };
   });
   if (night) for (const k of racers) {         // every boat carries a lamp that lights the water just ahead
@@ -334,7 +334,7 @@ export async function runRace(ctx: Ctx, cfg: RaceConfig): Promise<Score[]> {
       const tgt = (k.idx + (boat ? 17 : 13)) % N;
       k.lane += (Math.random() - 0.5) * dt * 3; k.lane = clamp(k.lane, -WIDTH * 0.32, WIDTH * 0.32);
       const s = at(tgt, k.lane);
-      k.steer = clamp(-wrap(Math.atan2(s.x - k.x, s.z - k.z) - k.th) * [1.6, 2.5, 3][ctx.botLevel], -1, 1);
+      k.steer = clamp(-wrap(Math.atan2(s.x - k.x, s.z - k.z) - k.th) * [1.6, 2.5, 3][k.p.level], -1, 1);
       if (ai && clock > k.useAt && (boat ? k.cool <= 0 : k.item)) { use(k); k.useAt = clock + 1 + Math.random() * 5; }
     }
     // nearest centre-line sample, searched near the last one

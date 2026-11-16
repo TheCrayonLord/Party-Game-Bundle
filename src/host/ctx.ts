@@ -2,6 +2,7 @@ import type { Stroke, View } from '../core/types';
 import { SPEED, h, pick, rand } from '../core/util';
 import type { Player, Room } from './room';
 import { bubble, line, mascot, type Moment } from './mascot';
+import { isPaused, later } from './clock';
 
 export interface GameMeta {
   id: string; name: string; emoji: string; zone: string; blurb: string; min: number; max: number;
@@ -50,8 +51,8 @@ export class Ctx {
   private leader = '';
   private tail = { id: '', since: 0, said: '' };
 
-  /** How good the bots are: 0 easy, 1 normal, 2 hard. */
-  botLevel: 0 | 1 | 2 = 1;
+  /** How often each player crashed or was knocked out, for the end-of-night highlights. */
+  moments: Record<'crash' | 'out', Map<string, number>> = { crash: new Map(), out: new Map() };
 
   constructor(private room: Room, root: HTMLElement, public players: Player[], meta: GameMeta) {
     this.hudWait = h('div.hud-wait');
@@ -63,6 +64,7 @@ export class Ctx {
   // ---- mascot commentary ----
   /** Has the mascot remark on something a player just did. Remarks are spaced out so they never pile up. */
   comment(kind: Moment, p: Player, urgent = false) {
+    if (kind === 'crash' || kind === 'out') this.moments[kind].set(p.id, (this.moments[kind].get(p.id) || 0) + 1);
     const now = performance.now();
     if (!this.alive || now - this.talkAt < (urgent ? 3500 : 9000)) return;
     this.talkAt = now;
@@ -102,18 +104,19 @@ export class Ctx {
   sleep(sec: number): Promise<void> {
     return new Promise((res, rej) => {
       if (!this.alive) return rej(new Cancelled());
-      const t = setTimeout(() => { this.pending.delete(rej); res(); }, (sec * 1000) / SPEED);
+      const cancel = later((sec * 1000) / SPEED, () => { this.pending.delete(rej); res(); });
       this.pending.add(rej);
-      this.cleanups.push(() => clearTimeout(t));
+      this.cleanups.push(cancel);
     });
   }
   /** Runs `cb` every animation frame until the returned function is called or the game ends. */
   frame(cb: (dt: number, t: number) => void) {
     let id = 0, last = performance.now(), on = true;
-    const loop = (now: number) => {
+    const loop = () => {
       if (!on || !this.alive) return;
-      const dt = Math.min(0.05, (now - last) / 1000) ; last = now;
-      cb(dt, now / 1000);
+      const now = performance.now();      // the host clock, which stands still while paused
+      const dt = Math.min(0.05, (now - last) / 1000); last = now;
+      if (!isPaused()) cb(dt, now / 1000);
       id = requestAnimationFrame(loop);
     };
     id = requestAnimationFrame(loop);

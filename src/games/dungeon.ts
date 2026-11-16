@@ -45,7 +45,7 @@ export const dungeon: GameDef = {
       const votes = await ctx.collect(voters, (p) => ({ type: 'choice', key, id: key, prompt: room.text,
         sub: traitors.includes(p) ? `😈 The dangerous way is: “${label(danger)}”. Steer them into it.` : p === scout ? `🔮 Your gut says “${label(gut)}” is SAFE. (Your gut is usually right.) Convince the others!` : 'You have no special feeling about this one. Who do you believe?',
         options: [{ id: 'a', label: room.a }, { id: 'b', label: room.b }] }), 40,
-        { bot: (p) => (traitors.includes(p) ? danger : Math.random() < [0.45, 0.6, 0.8][ctx.botLevel] ? safe : danger) });
+        { bot: (p) => (traitors.includes(p) ? danger : Math.random() < [0.45, 0.6, 0.8][p.level] ? safe : danger) });
       ctx.wait(exiled.size ? [...exiled] : [], 'You’ve been thrown off the train', 'Watch and heckle.', '🪦');
       const t = tally(votes), a = t.get('a')?.length || 0, b = t.get('b')?.length || 0;
       const chosen = a === b ? pick(['a', 'b']) : a > b ? 'a' : 'b';

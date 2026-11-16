@@ -31,6 +31,7 @@ export type ToPhone =
   | { t: 'welcome'; id: string; name: string; avatar: string; color: string; shape: string; vip: boolean; tickets: number }
   | { t: 'view'; v: View }
   | { t: 'live'; l: Record<string, string> }
+  | { t: 'pause'; on: boolean }
   | { t: 'kicked' };
 
 export const COLORS = ['#e4572e', '#f3a712', '#ffe14d', '#a8c256', '#3fa34d', '#2ab7a9', '#4cc9f0', '#4361ee', '#9b5de5', '#f15bb5', '#b08968', '#f8f4e3'];

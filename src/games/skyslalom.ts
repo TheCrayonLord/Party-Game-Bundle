@@ -4,6 +4,7 @@ import type { Ctx, GameDef } from '../host/ctx';
 import type { Player } from '../host/room';
 
 const RINGS = 22, GAP = 2.1 /* seconds between rings */, SPEED_Z = 46, FAR = -230;
+const WARN = 1.4, BLOW = 2.2;             // a gust is announced by two pulses of its label, then it blows
 const XR = 17, YLO = 2, YHI = 19;        // the box the planes fly in
 
 interface Plane { p: Player; mesh: THREE.Group; x: number; y: number; vx: number; vy: number; tx: number; ty: number; score: number; streak: number; aimX: number; aimY: number; live: string }
@@ -13,6 +14,7 @@ export const skyslalom: GameDef = {
     howTo: [
       "🛩️ TILT left and right to bank. Tip the phone back to climb, forward to dive.",
       "⭕ Fly through the hoops as they arrive: 100 points each.",
+      "💨 When the GUST sign pulses twice, brace: the wind is about to shove everyone sideways.",
       "🟡 Thread the small gold ring in the middle for 250.",
       "🔥 Don’t miss: every hoop in a row is worth more.",
     ] },
@@ -73,19 +75,22 @@ export const skyslalom: GameDef = {
       return { g, x: rx, y: ry, at: 3 + i * GAP, done: false };     // `at` = the moment it reaches the planes
     });
 
-    let clock = -3.5, gust = 0, gustUntil = 0, lastHud = 0;
+    let clock = -3.5, gust = 0, gustAt = -99, lastHud = 0;
     await new Promise<void>((resolve) => {
       const stop = ctx.frame((dt, t) => {
         clock += dt;
-        overlay.textContent = clock < -0.5 ? String(Math.ceil(-clock - 0.5)) : clock < 0.5 ? 'FLY!' : gustUntil > clock ? (gust > 0 ? '💨 Gust! ➡' : '⬅ Gust! 💨') : '';
+        const since = clock - gustAt, warning = since < WARN, blowing = !warning && since < WARN + BLOW;
+        overlay.textContent = clock < -0.5 ? String(Math.ceil(-clock - 0.5)) : clock < 0.5 ? 'FLY!' : warning || blowing ? (gust > 0 ? '💨 Gust! ➡' : '⬅ Gust! 💨') : '';
         overlay.style.fontSize = clock > 0.5 ? '3em' : ''; overlay.style.alignItems = clock > 0.5 ? 'start' : '';
-        if (clock > 0 && clock > gustUntil + 7 && Math.random() < dt * 0.25) { gust = Math.random() < 0.5 ? -1 : 1; gustUntil = clock + 2.2; }   // now and then, wind shoves everyone sideways
-        const wind = gustUntil > clock ? gust * 16 : 0;
+        // The label swells twice as a warning; then it slides the way the wind blows while the planes are pushed.
+        overlay.style.transform = clock < 0.5 ? '' : warning ? `scale(${1 + 0.45 * Math.abs(Math.sin((since / WARN) * Math.PI * 2))})` : blowing ? `translateX(${gust * (since - WARN) * 6}%)` : '';
+        if (clock > 0 && since > WARN + BLOW + 7 && Math.random() < dt * 0.25) { gust = Math.random() < 0.5 ? -1 : 1; gustAt = clock; }   // now and then, wind shoves everyone sideways
+        const wind = blowing ? gust * 16 : 0;
         const next = rings.find((r) => !r.done);
 
         for (const pl of planes) {
           if (pl.p.bot || !pl.p.connected) {    // bots aim for the next hoop, not always well
-            const slop = [13, 7, 3][ctx.botLevel];
+            const slop = [13, 7, 3][pl.p.level];
             if (next && Math.random() < dt * 1.5) { pl.aimX = next.x + (Math.random() - 0.5) * slop; pl.aimY = next.y + (Math.random() - 0.5) * slop; }
             pl.tx = clamp((pl.aimX - pl.x) * 0.35, -1, 1); pl.ty = clamp((pl.aimY - pl.y) * 0.35, -1, 1);
           }
@@ -124,7 +129,7 @@ export const skyslalom: GameDef = {
       });
     });
     const order = [...planes].sort((a, b) => b.score - a.score);
-    overlay.style.fontSize = ''; overlay.style.alignItems = '';
+    overlay.style.fontSize = ''; overlay.style.alignItems = ''; overlay.style.transform = '';
     overlay.textContent = `${order[0].p.avatar} ${order[0].p.name} wins!`;
     ctx.wait(ctx.players, 'Landed!', '', '🛬');
     await ctx.sleep(3.5);

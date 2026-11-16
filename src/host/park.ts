@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { clamp, h, pick } from '../core/util';
 import type { GameDef } from './ctx';
 import type { Player, Room } from './room';
+import { isPaused } from './clock';
 
 const ZONE_COLORS: Record<string, string> = { Speedway: '#c9553a', Lagoon: '#3f8fa6', 'Art Alley': '#d9a441', Midway: '#b0527a', 'Fortune Tent': '#6f5aa8', 'Haunted Manor': '#4f6b5a' };
 const XMAX = 50, ZMIN = -30, ZMAX = 33, SPEED = 15, PAD_R = 4.6;
@@ -332,7 +333,8 @@ export class Park {
 
   private frame = (now: number) => {
     if (!this.alive) return;
-    const dt = Math.min(0.05, (now - this.last) / 1000), t = now / 1000; this.last = now;
+    now = performance.now();
+    const dt = isPaused() ? 0 : Math.min(0.05, (now - this.last) / 1000), t = now / 1000; this.last = now;
     const guests = [...this.guests.values()];
     const humansAt = (b: Booth) => guests.filter((g) => !g.p.bot && g.at === b).length;
 

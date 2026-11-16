@@ -4,6 +4,8 @@ import type { HostNet } from '../core/transport';
 export interface Player {
   id: string; token: string; name: string; avatar: string; color: string; shape: string;
   tickets: number; connected: boolean; bot: boolean; vip: boolean; cid?: string; view: View;
+  /** How well this player plays when the computer is driving: 0 easy, 1 normal, 2 hard. Each bot has its own. */
+  level: 0 | 1 | 2;
 }
 
 export const MAX_PLAYERS = 12;
@@ -16,6 +18,7 @@ export class Room {
   onInput: (p: Player, d: any) => void = () => {};
   private byConn = new Map<string, Player>();
   private seq = 0;
+  private paused = false;
 
   constructor(public net: HostNet) {
     net.onJoin = () => {};
@@ -47,6 +50,7 @@ export class Room {
     this.fixVip();
     this.welcome(p);
     this.net.send(cid, { t: 'view', v: p.view } satisfies ToPhone);
+    if (this.paused) this.net.send(cid, { t: 'pause', on: true } satisfies ToPhone);
     this.onChange();
   }
 
@@ -55,16 +59,16 @@ export class Room {
     const ci = Math.max(0, COLORS.findIndex((c) => !used.has(c)));
     const p: Player = {
       id: 'p' + ++this.seq, token: '', name, avatar: AVATARS.includes(avatar) ? avatar : AVATARS[ci], color: COLORS[ci], shape: SHAPES[ci],
-      tickets: 0, connected: bot, bot, vip: false, view: { type: 'wait', key: 'new', title: 'Welcome!' },
+      tickets: 0, connected: bot, bot, vip: false, level: 1, view: { type: 'wait', key: 'new', title: 'Welcome!' },
     };
     this.players.push(p);
     return p;
   }
 
-  addBot() {
+  addBot(level: 0 | 1 | 2 = 1) {
     if (this.players.length >= MAX_PLAYERS) return;
     const name = BOT_NAMES.find((n) => !this.players.some((p) => p.name === n)) || 'Bot';
-    this.make(name, AVATARS[(this.seq * 5) % AVATARS.length], true);
+    this.make(name, AVATARS[(this.seq * 5) % AVATARS.length], true).level = level;
     this.onChange();
   }
 
@@ -88,6 +92,12 @@ export class Room {
 
   welcome(p: Player) {
     if (p.cid) this.net.send(p.cid, { t: 'welcome', id: p.id, name: p.name, avatar: p.avatar, color: p.color, shape: p.shape, vip: p.vip, tickets: p.tickets } satisfies ToPhone);
+  }
+
+  /** Tells every phone the game is paused (or running again). */
+  setPaused(on: boolean) {
+    this.paused = on;
+    for (const p of this.players) if (p.cid) this.net.send(p.cid, { t: 'pause', on } satisfies ToPhone);
   }
 
   setView(p: Player, v: View) {

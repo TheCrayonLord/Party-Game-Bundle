@@ -76,6 +76,7 @@ function onMsg(m: ToPhone) {
     if (!ticket.isConnected) app.replaceChildren(ticket, screen);
   } else if (m.t === 'view') show(m.v);
   else if (m.t === 'live') liveEls(m.l);
+  else if (m.t === 'pause') { if (m.on) showOverlay('⏸ Paused'); else hideOverlay(); }
   else if (m.t === 'kicked') { net?.close(); net = null; joinForm('You were removed from the park'); }
 }
 
