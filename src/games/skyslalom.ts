@@ -80,7 +80,8 @@ export const skyslalom: GameDef = {
       const stop = ctx.frame((dt, t) => {
         clock += dt;
         const since = clock - gustAt, warning = since < WARN, blowing = !warning && since < WARN + BLOW;
-        overlay.textContent = clock < -0.5 ? String(Math.ceil(-clock - 0.5)) : clock < 0.5 ? 'FLY!' : warning || blowing ? (gust > 0 ? '💨 Gust! ➡' : '⬅ Gust! 💨') : '';
+        const sign = clock < -0.5 ? String(Math.ceil(-clock - 0.5)) : clock < 0.5 ? 'FLY!' : warning || blowing ? (gust > 0 ? '💨 Gust! ➡' : '⬅ Gust! 💨') : '';
+        if (sign !== overlay.textContent) { overlay.textContent = sign; if (sign === 'FLY!') ctx.sfx('go'); else if (sign.length === 1) ctx.sfx('count'); else if (sign) ctx.sfx('whoosh'); }
         overlay.style.fontSize = clock > 0.5 ? '3em' : ''; overlay.style.alignItems = clock > 0.5 ? 'start' : '';
         // The label swells twice as a warning; then it slides the way the wind blows while the planes are pushed.
         overlay.style.transform = clock < 0.5 ? '' : warning ? `scale(${1 + 0.45 * Math.abs(Math.sin((since / WARN) * Math.PI * 2))})` : blowing ? `translateX(${gust * (since - WARN) * 6}%)` : '';
@@ -109,8 +110,8 @@ export const skyslalom: GameDef = {
             r.done = true;
             for (const pl of planes) {
               const d = Math.hypot(pl.x - r.x, pl.y - r.y);
-              if (d < 1.9) { pl.score += 250 + pl.streak * 25; pl.streak++; }
-              else if (d < 4.4) { pl.score += 100 + pl.streak * 25; pl.streak++; }
+              if (d < 1.9) { pl.score += 250 + pl.streak * 25; pl.streak++; ctx.buzz(pl.p, 'good'); }
+              else if (d < 4.4) { pl.score += 100 + pl.streak * 25; pl.streak++; ctx.buzz(pl.p, 'good'); }
               else pl.streak = 0;
             }
           }

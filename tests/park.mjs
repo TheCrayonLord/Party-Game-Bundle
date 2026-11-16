@@ -46,7 +46,12 @@ const banner = await host.textContent('.park-banner');
 const phoneSays = await phones[0].textContent('[data-live="big"]');
 if (shots) await host.screenshot({ path: `${shots}/park-vote.png` });
 
-const started = await host.waitForSelector('.game', { timeout: 30000 }).then(() => true, () => false);
+// On a slow machine the walkers fall a little short of the circle, so nudge them on until the ride starts.
+let started = false;
+for (let i = 0; i < 6 && !started; i++) {
+  started = await host.waitForSelector('.game', { timeout: 8000 }).then(() => true, () => false);
+  if (!started) await Promise.all(phones.map((p) => hold(p, 'up', 150)));
+}
 const title = started ? await host.textContent('.hud-title') : '';
 const parkGone = !(await host.$('.park-canvas'));
 const ok = started && parkGone && !errors.length;

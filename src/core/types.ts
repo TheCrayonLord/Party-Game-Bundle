@@ -21,6 +21,8 @@ export type View = { key: string; live?: Record<string, string> } & (
   /** The hot potato: flick left, right or up to throw it. Sends {flick}. */
   | { type: 'bomb'; title: string }
   | { type: 'rub' }
+  /** For the audience: a pad of reactions. Sends {cheer: emoji}. */
+  | { type: 'cheer'; title: string; text: string }
 );
 
 export type ToHost =
@@ -32,6 +34,8 @@ export type ToPhone =
   | { t: 'view'; v: View }
   | { t: 'live'; l: Record<string, string> }
   | { t: 'pause'; on: boolean }
+  /** Vibrate (where the phone can) and flash the screen: 'hit' = something bad, 'good' = something good, 'turn' = it's your go. */
+  | { t: 'buzz'; kind: 'hit' | 'good' | 'turn' }
   | { t: 'kicked' };
 
 export const COLORS = ['#e4572e', '#f3a712', '#ffe14d', '#a8c256', '#3fa34d', '#2ab7a9', '#4cc9f0', '#4361ee', '#9b5de5', '#f15bb5', '#b08968', '#f8f4e3'];

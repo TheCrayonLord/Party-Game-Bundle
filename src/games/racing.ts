@@ -95,7 +95,7 @@ const PROFILE = {
 
 interface Racer {
   p: Player; mesh: THREE.Group; x: number; z: number; th: number; vx: number; vz: number; steer: number;
-  idx: number; lap: number; item: Item | null; boost: number; spin: number; slow: number; cool: number; immune: number;
+  rockAt: number; idx: number; lap: number; item: Item | null; boost: number; spin: number; slow: number; cool: number; immune: number;
   finish: number | null; off: boolean; ai: boolean; skill: number; lane: number; useAt: number; liveText: string; btnText: string;
 }
 
@@ -255,7 +255,7 @@ export async function runRace(ctx: Ctx, cfg: RaceConfig): Promise<Score[]> {
     const per = boat ? 4 : 3, row = Math.floor(i / per), col = (i % per) - (per - 1) / 2, idx = (N - 5 - row * 5) % N, s = at(idx, col * (boat ? 4.4 : 3.2));
     return {
       p, mesh: build(p), x: s.x, z: s.z, th: Math.atan2(T[idx].x, T[idx].z), vx: 0, vz: 0, steer: 0,
-      idx, lap: -1, item: null, boost: 0, spin: 0, slow: 0, cool: 2, immune: 0, finish: null, off: false, ai: p.bot, skill: [0.7, 0.84, 0.97][p.level] + Math.random() * [0.12, 0.14, 0.08][p.level], lane: col * 2.5, useAt: 0, liveText: '', btnText: '',
+      rockAt: -9, idx, lap: -1, item: null, boost: 0, spin: 0, slow: 0, cool: 2, immune: 0, finish: null, off: false, ai: p.bot, skill: [0.7, 0.84, 0.97][p.level] + Math.random() * [0.12, 0.14, 0.08][p.level], lane: col * 2.5, useAt: 0, liveText: '', btnText: '',
     };
   });
   if (night) for (const k of racers) {         // every boat carries a lamp that lights the water just ahead
@@ -302,16 +302,16 @@ export async function runRace(ctx: Ctx, cfg: RaceConfig): Promise<Score[]> {
 
   const use = (k: Racer) => {
     if (k.finish != null || k.spin > 0) return;
-    if (boat) { if (k.cool <= 0) { k.boost = 1.3; k.cool = 6; } return; }
+    if (boat) { if (k.cool <= 0) { k.boost = 1.3; k.cool = 6; ctx.sfx('whoosh'); ctx.buzz(k.p, 'good'); } return; }
     if (!k.item) return;
     const it = k.item; k.item = null;
-    if (it === 'boost') k.boost = 1.6;
+    if (it === 'boost') { k.boost = 1.6; ctx.sfx('whoosh'); ctx.buzz(k.p, 'good'); }
     else if (it === 'oil') {
       const m = new THREE.Mesh(oilGeo, oilMat); m.position.set(k.x - Math.sin(k.th) * 4, 0.12, k.z - Math.cos(k.th) * 4); scene.add(m);
       oils.push({ m, owner: k, age: 0 });
     } else {
       const r = ranked(), me = r.indexOf(k), target = r.slice(0, me).reverse().find((o) => o.finish == null);
-      if (target) target.slow = 2; else k.boost = 0.8; // leading the race: a little consolation boost
+      if (target) { target.slow = 2; ctx.buzz(target.p, 'hit'); } else k.boost = 0.8; // leading the race: a little consolation boost
     }
   };
 
@@ -351,7 +351,13 @@ export async function runRace(ctx: Ctx, cfg: RaceConfig): Promise<Score[]> {
       for (const w of waves) if (crossed(w.i)) { if (fx * T[w.i].x + fz * T[w.i].z > 0.93) k.boost = Math.max(k.boost, 0.9); else k.slow = 1; }
       for (const c of currents) if (best >= c.from && best < c.to) { k.vx += NRM[best].x * c.dir * 9 * dt; k.vz += NRM[best].z * c.dir * 9 * dt; }
       for (const pl of pools) if (k.immune <= 0 && (pl.x - k.x) ** 2 + (pl.z - k.z) ** 2 < 16) { k.spin = 0.9; k.immune = 6; ctx.comment('crash', k.p); }
-      for (const b of buoys) { const dx = k.x - b.x, dz = k.z - b.z, d = Math.hypot(dx, dz); if (d < 2.6 && d > 0.01) { k.x = b.x + (dx / d) * 2.6; k.z = b.z + (dz / d) * 2.6; k.vx *= 0.6; k.vz *= 0.6; } }
+      for (const b of buoys) { const dx = k.x - b.x, dz = k.z - b.z, d = Math.hypot(dx, dz); if (d < 2.6 && d > 0.01) {
+        // Bounce off the rock: keep the sliding-past part of the speed, and get pushed clear of it, so nobody sits pinned nose-on.
+        const nx = dx / d, nz = dz / d, into = k.vx * nx + k.vz * nz;
+        k.x = b.x + nx * 2.7; k.z = b.z + nz * 2.7;
+        k.vx += nx * (Math.max(0, -into) + 7); k.vz += nz * (Math.max(0, -into) + 7);
+        if (k.rockAt < clock - 1) { k.rockAt = clock; ctx.sfx('thud'); ctx.buzz(k.p, 'hit'); }
+      } }
     }
     k.idx = best;
 
@@ -370,7 +376,7 @@ export async function runRace(ctx: Ctx, cfg: RaceConfig): Promise<Score[]> {
       vf += clamp(vmax - vf, -pr.accel * 2.2 * dt, (k.boost > 0 ? pr.accel * 3 : pr.accel) * dt);
       const keep = Math.exp(-pr.grip * dt); lx *= keep; lz *= keep;
       k.vx = fx * vf + lx; k.vz = fz * vf + lz;
-      k.th -= k.steer * pr.turn * dt * clamp(Math.abs(vf) / 8, 0, 1);
+      k.th -= k.steer * pr.turn * dt * clamp(Math.abs(vf) / 8, boat ? 0.45 : 0.2, 1);      // some steering even at a standstill, so you can always turn away from what you hit
     }
     k.x += k.vx * dt; k.z += k.vz * dt;
     const lim = WIDTH / 2 + (boat ? 9 : 6);        // invisible fence beside the verge
@@ -381,6 +387,7 @@ export async function runRace(ctx: Ctx, cfg: RaceConfig): Promise<Score[]> {
       const behind = place / Math.max(1, racers.length - 1);
       k.item = Math.random() < 0.25 + behind * 0.4 ? 'boost' : Math.random() < 0.5 ? 'zap' : 'oil';
       k.useAt = clock + 0.5 + Math.random() * 3;
+      ctx.buzz(k.p, 'good'); ctx.sfx('pop');
     }
     for (const o of oils) if ((o.owner !== k || o.age > 1) && k.spin <= 0 && (o.m.position.x - k.x) ** 2 + (o.m.position.z - k.z) ** 2 < 7) { k.spin = 1.1; k.boost = 0; o.age = 99; ctx.comment('crash', k.p); }
   };
@@ -388,7 +395,8 @@ export async function runRace(ctx: Ctx, cfg: RaceConfig): Promise<Score[]> {
   await new Promise<void>((resolve) => {
     const stop = ctx.frame((dt, t) => {
       clock += dt;
-      overlay.textContent = clock < -2.9 ? course.name : clock < -0.6 ? String(Math.ceil(-clock - 0.6)) : clock < 0.6 ? 'GO!' : '';
+      const sign = clock < -2.9 ? course.name : clock < -0.6 ? String(Math.ceil(-clock - 0.6)) : clock < 0.6 ? 'GO!' : '';
+      if (sign !== overlay.textContent) { overlay.textContent = sign; if (sign === 'GO!') ctx.sfx('go'); else if (sign.length === 1) ctx.sfx('count'); }
       const order = ranked();
       if (clock >= 0) {
         order.forEach((k, place) => step(k, dt, place));

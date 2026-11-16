@@ -2,6 +2,7 @@
 import { h } from '../core/util';
 import { isPaused, setPaused } from './clock';
 import { MAX_PLAYERS, type Player, type Room } from './room';
+import { applyVolumes, sfx, babble } from './sound';
 import { CHANNELS, THEMES, isFullscreen, saveSettings, setFullscreen, settings } from './settings';
 
 export const BOT_LEVELS = ['Easy', 'Normal', 'Hard'] as const;
@@ -63,7 +64,8 @@ export function initPause(room: Room, hooks: PauseHooks) {
     const sliders = CHANNELS.map(([id, label]) => {
       const out = h('span.set-val', `${settings.volume[id]}%`);
       const input = h<'input'>('input', { type: 'range', min: '0', max: '100', step: '5', value: String(settings.volume[id]), 'data-vol': id,
-        oninput: () => { settings.volume[id] = Number(input.value); out.textContent = `${input.value}%`; saveSettings(); } });
+        oninput: () => { settings.volume[id] = Number(input.value); out.textContent = `${input.value}%`; saveSettings(); applyVolumes(); },
+        onchange: () => { if (id === 'narration') babble('Step right up, step right up!'); else if (id !== 'music') sfx('pop'); } });
       return row(label, h('span.set-slider', input, out));
     });
     const theme = h<'select'>('select', { onchange: () => { settings.theme = theme.value; saveSettings(); } }, ...THEMES.map(([id, name]) => h('option', { value: id, selected: id === settings.theme }, name)));
@@ -83,7 +85,7 @@ export function initPause(room: Room, hooks: PauseHooks) {
         h('p.set-note', 'Regular is the walk-around park. Performance is a plain list of games, for slower computers.'),
         h('h3', 'Audio'),
         ...sliders,
-        h('p.set-note', 'The park has no sound yet. These levels are saved and will apply once it does.'),
+        h('p.set-note', 'Narration is the mascot’s voice. Game sounds cover effects, applause and fanfares.'),
         h('h3', `Bots (${bots.length})`),
         ...bots.map(botRow),
         bots.length ? null : h('p.set-note', 'No bots in the park.'),

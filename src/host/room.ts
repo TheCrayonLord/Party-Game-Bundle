@@ -6,6 +6,8 @@ export interface Player {
   tickets: number; connected: boolean; bot: boolean; vip: boolean; cid?: string; view: View;
   /** How well this player plays when the computer is driving: 0 easy, 1 normal, 2 hard. Each bot has its own. */
   level: 0 | 1 | 2;
+  /** In the audience: the park was full when they arrived. They can vote and cheer but don't play. */
+  spectator?: boolean;
 }
 
 export const MAX_PLAYERS = 12;
@@ -14,6 +16,7 @@ const BOT_NAMES = ['Biscuit', 'Wobbles', 'Pickle', 'Noodle', 'Gizmo', 'Sprout', 
 /** The people in the park: who is connected, what each phone shows, who is in charge. */
 export class Room {
   players: Player[] = [];
+  audience: Player[] = [];
   onChange: () => void = () => {};
   onInput: (p: Player, d: any) => void = () => {};
   private byConn = new Map<string, Player>();
@@ -36,13 +39,14 @@ export class Room {
   }
 
   private hello(cid: string, m: Extract<ToHost, { t: 'hello' }>) {
-    let p = this.players.find((x) => !x.bot && x.token === m.token);
+    let p = this.players.find((x) => !x.bot && x.token === m.token) ?? this.audience.find((x) => x.token === m.token);
     if (!p) {
-      if (this.players.length >= MAX_PLAYERS) {
-        this.net.send(cid, { t: 'view', v: { type: 'wait', key: 'full', title: 'The park is full', text: 'Twelve guests is the limit. Sorry!', emoji: '🚧' } } satisfies ToPhone);
-        return;
-      }
-      p = this.make(String(m.name || 'Guest').trim().slice(0, 12) || 'Guest', m.avatar, false);
+      const name = String(m.name || 'Guest').trim().slice(0, 12) || 'Guest';
+      if (this.players.length >= MAX_PLAYERS) {      // no seats left: they join the audience
+        p = { id: 'a' + ++this.seq, token: '', name, avatar: AVATARS.includes(m.avatar) ? m.avatar : AVATARS[0], color: '#8d8478', shape: '👀',
+          tickets: 0, connected: false, bot: false, vip: false, level: 1, spectator: true, view: { type: 'wait', key: 'audience', title: 'You’re in the audience', text: 'The park is full, but you can vote and cheer.', emoji: '👀' } };
+        this.audience.push(p);
+      } else p = this.make(name, m.avatar, false);
       p.token = m.token;
     } else if (p.cid && p.cid !== cid) this.byConn.delete(p.cid);
     p.cid = cid; p.connected = true;
@@ -75,7 +79,26 @@ export class Room {
   remove(p: Player) {
     if (p.cid) { this.net.send(p.cid, { t: 'kicked' } satisfies ToPhone); this.byConn.delete(p.cid); }
     this.players = this.players.filter((x) => x !== p);
+    this.audience = this.audience.filter((x) => x !== p);
     this.fixVip(); this.onChange();
+  }
+
+  /** Gives free seats to people waiting in the audience. Returns true if anyone moved. */
+  promote(): boolean {
+    let moved = false;
+    while (this.players.length < MAX_PLAYERS) {
+      const p = this.audience.find((x) => x.connected); if (!p) break;
+      this.audience = this.audience.filter((x) => x !== p);
+      const used = new Set(this.players.map((x) => x.color)), ci = Math.max(0, COLORS.findIndex((c) => !used.has(c)));
+      p.color = COLORS[ci]; p.shape = SHAPES[ci]; p.spectator = false;
+      this.players.push(p); this.welcome(p); moved = true;
+    }
+    if (moved) this.fixVip();
+    return moved;
+  }
+
+  buzz(p: Player, kind: 'hit' | 'good' | 'turn') {
+    if (p.cid) this.net.send(p.cid, { t: 'buzz', kind } satisfies ToPhone);
   }
 
   /** The VIP is the first connected human; they drive the menus from their phone. */
@@ -97,7 +120,7 @@ export class Room {
   /** Tells every phone the game is paused (or running again). */
   setPaused(on: boolean) {
     this.paused = on;
-    for (const p of this.players) if (p.cid) this.net.send(p.cid, { t: 'pause', on } satisfies ToPhone);
+    for (const p of [...this.players, ...this.audience]) if (p.cid) this.net.send(p.cid, { t: 'pause', on } satisfies ToPhone);
   }
 
   setView(p: Player, v: View) {

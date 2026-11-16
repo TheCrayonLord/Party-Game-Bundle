@@ -41,10 +41,10 @@ export const logolab: GameDef = {
     const gallery = h('div.row.logo-gallery', ...cards);
     ctx.show(h('div.col.pad', h('h1.big', 'Vote: best logo'), gallery));
     const v1 = ctx.key('vlogo');
-    const best = tally(await ctx.collect(P, (p) => ({ type: 'choice', key: v1, id: v1, prompt: 'Best LOGO?', sub: 'Not your own.', options: P.filter((q) => q !== p).map((q) => ({ id: q.id, label: company.get(q.id)! })) }), 30));
+    const best = tally(await ctx.collect(P, (p) => ({ type: 'choice', key: v1, id: v1, prompt: 'Best LOGO?', sub: 'Not your own.', options: P.filter((q) => q !== p).map((q) => ({ id: q.id, label: company.get(q.id)! })) }), 30, { crowd: true }));
     ctx.show(h('div.col.pad', h('h1.big', 'Vote: best slogan'), gallery));
     const v2 = ctx.key('vslogan');
-    const bestS = tally(await ctx.collect(P, (p) => ({ type: 'choice', key: v2, id: v2, prompt: 'Best SLOGAN?', sub: 'Not your own.', options: P.map((_, i) => i).filter((i) => sloganFor(i).writer !== p).map((i) => ({ id: String(i), label: `“${sloganFor(i).text}”` })) }), 30));
+    const bestS = tally(await ctx.collect(P, (p) => ({ type: 'choice', key: v2, id: v2, prompt: 'Best SLOGAN?', sub: 'Not your own.', options: P.map((_, i) => i).filter((i) => sloganFor(i).writer !== p).map((i) => ({ id: String(i), label: `“${sloganFor(i).text}”` })) }), 30, { crowd: true }));
 
     P.forEach((p, i) => {
       const lv = best.get(p.id)?.length || 0, sv = bestS.get(String(i))?.length || 0, writer = sloganFor(i).writer;

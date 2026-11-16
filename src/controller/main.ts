@@ -3,7 +3,7 @@ import './phone.css';
 import { connectClient, type ClientNet, type NetKind } from '../core/transport';
 import { AVATARS, type ToPhone, type View } from '../core/types';
 import { h, pick, qs } from '../core/util';
-import { renderView, requestMotion } from './kit';
+import { renderView, requestMotion, watchRotation } from './kit';
 
 const app = document.getElementById('app')!;
 const store = {
@@ -24,6 +24,7 @@ let liveEls: (l: Record<string, string>) => void = () => {};
 const ticket = h('div.ticket');
 const screen = h('div.screen');
 
+watchRotation();
 joinForm();
 
 function joinForm(error = '') {
@@ -43,6 +44,7 @@ function joinForm(error = '') {
       // Must happen inside this tap: iOS only allows the motion prompt from a user gesture.
       await requestMotion();
       keepAwake();
+      (window.screen.orientation as any)?.lock?.('portrait')?.catch?.(() => {});      // works on some phones; the rest get the counter-rotated layout
       go.disabled = true; err.textContent = '';
       if (!qs.get('net')) kind = await fetch(new URL('relay-info', location.href)).then((r) => (r.ok ? 'r' : 'p'), () => 'p') as NetKind;
       connect(true);
@@ -72,15 +74,26 @@ async function connect(first: boolean) {
 function onMsg(m: ToPhone) {
   if (m.t === 'welcome') {
     me = m;
+    ticket.style.borderLeft = `14px solid ${m.color}`;
     ticket.replaceChildren(h('div.ticket-av', { style: { background: m.color } }, m.avatar), h('div.ticket-name', `${m.shape} ${m.name}${m.vip ? ' 🎩' : ''}`), h('div.ticket-tix', `${m.tickets} 🎟️`));
     if (!ticket.isConnected) app.replaceChildren(ticket, screen);
   } else if (m.t === 'view') show(m.v);
   else if (m.t === 'live') liveEls(m.l);
+  else if (m.t === 'buzz') buzz(m.kind);
   else if (m.t === 'pause') { if (m.on) showOverlay('⏸ Paused'); else hideOverlay(); }
   else if (m.t === 'kicked') { net?.close(); net = null; joinForm('You were removed from the park'); }
 }
 
+/** Vibrates where the phone allows it (iPhones don't) and flashes the screen edge for everyone. */
+function buzz(kind: 'hit' | 'good' | 'turn') {
+  try { navigator.vibrate?.(kind === 'hit' ? [140] : kind === 'good' ? [40] : [70, 60, 70]); } catch { /* not allowed */ }
+  const f = h('div.flash.' + kind);
+  document.body.append(f);
+  setTimeout(() => f.remove(), 500);
+}
+
 function show(v: View) {
+  document.body.classList.toggle('keep-portrait', v.type === 'tilt');      // tilting must not flip the layout
   if (v.key !== curKey) {
     curKey = v.key;
     liveEls = renderView(screen, v, (d) => net?.send({ t: 'in', d }), me?.color || '#e8b23a');

@@ -193,7 +193,7 @@ async function heat(ctx: Ctx, hill: Hill, racers: Player[]): Promise<Map<string,
     }
     while (s.nextGate < gates.length && gates[s.nextGate].z > s.z) {       // crossed a gate line: through the flags or not?
       if (Math.abs(gates[s.nextGate].x - s.x) < 4.6) { s.gates++; s.boost = 1.2; }
-      else if (s.finish == null) { s.missed++; s.missFlash = 1.6; }
+      else if (s.finish == null) { s.missed++; s.missFlash = 1.6; ctx.buzz(s.p, 'hit'); }
       s.nextGate++;
     }
     if (s.finish != null) { s.v = Math.max(0, s.v - 26 * dt); s.a *= 1 - 3 * dt; }
@@ -205,7 +205,7 @@ async function heat(ctx: Ctx, hill: Hill, racers: Player[]): Promise<Map<string,
       if (s.air <= 0) s.a = clamp(s.a + s.steer * (s.tuck ? 0.9 : 1.9) * (onIce ? 0.35 : 1) * dt, -1.05, 1.05);
       s.v += clamp(vmax - s.v, -22 * dt, (s.tuck ? 15 : 11) * dt);
       s.v -= Math.abs(s.a) * 5 * dt;       // carving costs speed
-      for (const r of ramps) if (s.air <= 0 && Math.abs(r.z - s.z) < 3 && Math.abs(r.x - s.x) < 4) { s.air = 1; s.v += 5; }
+      for (const r of ramps) if (s.air <= 0 && Math.abs(r.z - s.z) < 3 && Math.abs(r.x - s.x) < 4) { s.air = 1; s.v += 5; ctx.sfx('whoosh'); ctx.buzz(s.p, 'good'); }
       for (const o of solids) if (s.air <= 0 && (o.x - s.x) ** 2 + (o.z - s.z) ** 2 < o.r * o.r) { s.stun = 1.2; s.x += s.x >= o.x ? 2.6 : -2.6; s.a = 0; ctx.comment('crash', s.p); }
     }
     s.boost -= dt; s.missFlash -= dt; if (s.air > 0) s.air -= dt;
@@ -217,7 +217,8 @@ async function heat(ctx: Ctx, hill: Hill, racers: Player[]): Promise<Map<string,
   await new Promise<void>((resolve) => {
     const stop = ctx.frame((dt, t) => {
       clock += dt;
-      overlay.textContent = clock < -2.9 ? hill.name : clock < -0.6 ? String(Math.ceil(-clock - 0.6)) : clock < 0.6 ? 'GO!' : '';
+      const sign = clock < -2.9 ? hill.name : clock < -0.6 ? String(Math.ceil(-clock - 0.6)) : clock < 0.6 ? 'GO!' : '';
+      if (sign !== overlay.textContent) { overlay.textContent = sign; if (sign === 'GO!') ctx.sfx('go'); else if (sign.length === 1) ctx.sfx('count'); }
       if (clock >= 0) skiers.forEach((s) => step(s, dt));
       for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) {      // skiers can't share the same patch of snow
         const a = skiers[i], b = skiers[j], dx = b.x - a.x, dz = b.z - a.z, d = Math.hypot(dx, dz);

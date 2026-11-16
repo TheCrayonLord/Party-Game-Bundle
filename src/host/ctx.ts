@@ -3,6 +3,7 @@ import { SPEED, h, pick, rand } from '../core/util';
 import type { Player, Room } from './room';
 import { bubble, line, mascot, type Moment } from './mascot';
 import { isPaused, later } from './clock';
+import { babble, sfx, sting, type Sfx } from './sound';
 
 export interface GameMeta {
   id: string; name: string; emoji: string; zone: string; blurb: string; min: number; max: number;
@@ -50,25 +51,59 @@ export class Ctx {
   private began = performance.now();
   private leader = '';
   private tail = { id: '', since: 0, said: '' };
+  private root: HTMLElement;
+  /** While the audience is voting: the screen each of them should see. Otherwise they get the cheer pad. */
+  private crowdFor: ((s: Player) => View) | null = null;
+  private cheered = new Map<string, number>();
 
   /** How often each player crashed or was knocked out, for the end-of-night highlights. */
   moments: Record<'crash' | 'out', Map<string, number>> = { crash: new Map(), out: new Map() };
 
   constructor(private room: Room, root: HTMLElement, public players: Player[], meta: GameMeta) {
+    this.root = root;
     this.hudWait = h('div.hud-wait');
     this.hudTimer = h('div.hud-timer');
     this.stage = h('div.stage');
     root.replaceChildren(h('div.game', h('div.hud', h('div.hud-title', `${meta.emoji} ${meta.name}`), this.hudWait, this.hudTimer), this.stage, this.talk));
+    this.onInput((p, d) => {        // the audience cheering: their emoji floats up the big screen
+      if (typeof d?.cheer !== 'string' || this.players.includes(p)) return;
+      const now = performance.now(); if (now - (this.cheered.get(p.id) || 0) < 500) return;
+      this.cheered.set(p.id, now);
+      const el = h('div.cheer-float', { style: { left: `${8 + Math.random() * 84}%` } }, h('div.cheer-emoji', d.cheer.slice(0, 4)), h('div.cheer-name', p.name));
+      root.firstElementChild?.append(el);
+      setTimeout(() => el.remove(), 2600);
+    });
+    this.crowdSync();
   }
+
+  // ---- the audience: people who arrived when the park was full, or after this game began ----
+  spectators(): Player[] {
+    return [...this.room.audience, ...this.room.players.filter((p) => !p.bot && !this.players.includes(p))].filter((p) => p.connected);
+  }
+  /** Makes sure every spectator is looking at the right screen. Called when someone joins mid-game. */
+  crowdSync() {
+    if (!this.alive) return;
+    for (const s of this.spectators()) {
+      const v: View = this.crowdFor?.(s) ?? { type: 'cheer', key: 'cheer', title: 'You’re in the audience', text: 'Tap to cheer. You’ll get to vote when there’s a vote.' };
+      if (s.view.key !== v.key) this.room.setView(s, v);
+    }
+  }
+
+  // ---- sound and phone feedback ----
+  sfx(kind: Sfx) { sfx(kind); }
+  /** Vibrates and flashes one player's phone: 'hit' for bad news, 'good' for good news, 'turn' when it's their go. */
+  buzz(p: Player, kind: 'hit' | 'good' | 'turn') { this.room.buzz(p, kind); }
 
   // ---- mascot commentary ----
   /** Has the mascot remark on something a player just did. Remarks are spaced out so they never pile up. */
   comment(kind: Moment, p: Player, urgent = false) {
-    if (kind === 'crash' || kind === 'out') this.moments[kind].set(p.id, (this.moments[kind].get(p.id) || 0) + 1);
+    if (kind === 'crash' || kind === 'out') { this.moments[kind].set(p.id, (this.moments[kind].get(p.id) || 0) + 1); this.buzz(p, 'hit'); }
+    if (kind === 'crash') sfx('thud'); else if (kind === 'out') sting('aww', 0.8);
     const now = performance.now();
     if (!this.alive || now - this.talkAt < (urgent ? 3500 : 9000)) return;
     this.talkAt = now;
-    this.talk.replaceChildren(bubble(line(mascot.during[kind], { name: p.name })));
+    const words = line(mascot.during[kind], { name: p.name });
+    this.talk.replaceChildren(bubble(words)); babble(words);
     this.talk.classList.remove('show'); void this.talk.offsetWidth; this.talk.classList.add('show');
   }
   /** Games call this with the current order, best first; the mascot notices lead changes and whoever is stuck at the back. */
@@ -82,7 +117,7 @@ export class Ctx {
 
   get vip() { return this.room.vip; }
   key(prefix = 'k') { return prefix + ++this.keyN; }
-  by(id: string) { return this.players.find((p) => p.id === id)!; }
+  by(id: string) { return (this.players.find((p) => p.id === id) ?? this.spectators().find((p) => p.id === id))!; }
 
   // ---- phones ----
   view(p: Player, v: View) { this.room.setView(p, v); }
@@ -128,10 +163,12 @@ export class Ctx {
   timer(sec: number) {
     this.timerStop?.();
     const end = performance.now() + (sec * 1000) / SPEED;
+    let beeped = 0;
     const tick = () => {
       const left = Math.max(0, Math.ceil(((end - performance.now()) * SPEED) / 1000));
       this.hudTimer.textContent = left > 0 ? String(left) : '';
       this.hudTimer.classList.toggle('low', left <= 5 && left > 0);
+      if (left <= 5 && left > 0 && left !== beeped && !isPaused()) { beeped = left; sfx('tick'); }
     };
     tick();
     const iv = setInterval(tick, 200);
@@ -170,6 +207,7 @@ export class Ctx {
         }
         const v = q[i];
         this.view(p, v);
+        if (players.length === 1 && this.players.length > 1) this.buzz(p, 'turn');      // a screen for one player alone means it's their turn
         if (p.bot) this.sleep(1.2 + Math.random() * 3).then(() => { if (!finished) take(p, { id: (v as any).id, v: opts.bot?.(p, v) ?? botAnswer(v) }); }, () => {});
       };
       const take = (p: Player, d: any) => {
@@ -177,6 +215,7 @@ export class Ctx {
         const cur = q[out.get(p.id)!.length] as any;
         if (!cur || d?.id !== cur.id) return;
         out.get(p.id)!.push(d.v);
+        sfx('pop');
         advance(p);
       };
       const off = this.onInput(take);
@@ -188,9 +227,23 @@ export class Ctx {
   }
 
   /** One screen per player; resolves with playerId -> answer (missing if they ran out of time). */
-  async collect(players: Player[], viewFor: (p: Player) => View, seconds: number, opts: { bot?: (p: Player, v: View) => any } = {}): Promise<Map<string, any>> {
-    const res = await this.collectSeq(players, (p) => [viewFor(p)], seconds, opts);
-    const out = new Map<string, any>();
+  async collect(players: Player[], viewFor: (p: Player) => View, seconds: number, opts: { bot?: (p: Player, v: View) => any; /** Let the audience vote too (multiple-choice screens only). */ crowd?: boolean } = {}): Promise<Map<string, any>> {
+    const crowd = new Map<string, any>();
+    let off = () => {};
+    if (opts.crowd) {
+      this.crowdFor = (s) => (crowd.has(s.id) ? { type: 'wait', key: 'crowd-voted', title: 'Vote counted!', text: 'Eyes on the big screen.', emoji: '✅' } : viewFor(s));
+      this.crowdSync();
+      const stop = this.onInput((p, d) => {
+        if (this.players.includes(p) || crowd.has(p.id)) return;
+        const v = viewFor(p);
+        if (v.type !== 'choice' || d?.id !== v.id || !v.options.some((o) => o.id === d.v)) return;
+        crowd.set(p.id, d.v); sfx('pop'); this.crowdSync();
+      });
+      off = () => { stop(); this.crowdFor = null; this.crowdSync(); };
+    }
+    let res: Map<string, any[]>;
+    try { res = await this.collectSeq(players, (p) => [viewFor(p)], seconds, opts); } finally { off(); }
+    const out = new Map<string, any>(crowd);
     for (const [id, a] of res) if (a.length) out.set(id, a[0]);
     return out;
   }

@@ -41,14 +41,14 @@ export const fib: GameDef = {
       ctx.show(h('div.col.pad', prompt, h('div.row', ...order.map((o) => h('div.answer', o.text.toUpperCase()))), h('p.sub', 'Which one is TRUE? Vote on your phone.')));
       const vkey = ctx.key('vote');
       const votes = await ctx.collect(P, (p) => ({ type: 'choice', key: vkey, id: vkey, prompt: 'Which is the truth?', sub: q.q, options: order.filter((o) => !o.authors.includes(p.id)).map((o) => ({ id: o.id, label: o.text.toUpperCase() })) }), 30,
-        { bot: (p, v) => (v.type === 'choice' ? (Math.random() < [0.2, 0.4, 0.65][p.level] && v.options.some((o) => o.id === 'truth') ? 'truth' : pick(v.options).id) : null) });
+        { crowd: true, bot: (p, v) => (v.type === 'choice' ? (Math.random() < [0.2, 0.4, 0.65][p.level] && v.options.some((o) => o.id === 'truth') ? 'truth' : pick(v.options).id) : null) });
       const t = tally(votes);
 
       // Reveal lies that fooled someone first, the truth last.
       const reveal = [...order.filter((o) => !o.truth && t.get(o.id)?.length), order.find((o) => o.truth)!];
       for (const o of reveal) {
         const fooled = (t.get(o.id) || []).map((id) => ctx.by(id));
-        if (o.truth) fooled.forEach((p) => add(p.id, 1000)); else o.authors.forEach((a) => add(a, 500 * fooled.length));
+        if (o.truth) fooled.filter((p) => P.includes(p)).forEach((p) => add(p.id, 1000)); else o.authors.forEach((a) => add(a, 500 * fooled.length));
         ctx.show(h('div.col.pad', prompt,
           h('div.answer' + (o.truth ? '.truth' : ''), o.text.toUpperCase(),
             h('div.by', o.truth ? 'THE TRUTH' : `A lie by ${o.authors.map((a) => ctx.by(a).name).join(' & ')}`),

@@ -63,7 +63,7 @@ export const sketch: GameDef = {
     ctx.show(h('div.col.pad', h('h1.big', 'Vote for the best drawing'), h('div.row.sketch-tiles' + (drawings.length > 8 ? '.many' : ''), ...tiles)));
     const vkey = ctx.key('fav');
     const votes = await ctx.collect(P, (p) => ({ type: 'choice', key: vkey, id: vkey, prompt: 'Best drawing?', sub: 'Not your own.',
-      options: drawings.map((d, i) => ({ id: String(i), label: `🎨 ${d.l.by.name}: “${asked(d).slice(0, 24)}”` })).filter((_, i) => drawings[i].l.by !== p) }), 25);
+      options: drawings.map((d, i) => ({ id: String(i), label: `🎨 ${d.l.by.name}: “${asked(d).slice(0, 24)}”` })).filter((_, i) => drawings[i].l.by !== p) }), 25, { crowd: true });
     for (const [i, voters] of tally(votes)) {
       const d = drawings[Number(i)], pts = voters.length * 100;
       score.set(d.l.by.id, score.get(d.l.by.id)! + pts);

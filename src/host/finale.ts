@@ -4,6 +4,7 @@ import { SPEED, h, ordinal } from '../core/util';
 import type { GameMeta } from './ctx';
 import { MASCOTS, mascot } from './mascot';
 import type { Player, Room } from './room';
+import { music, preload, sfx, sting } from './sound';
 
 export interface Played { game: GameMeta; team: boolean; headline?: string; rows: { id: string; name: string; rank: number; won: number }[] }
 /** Everything remembered about the night, for the credits. */
@@ -69,6 +70,7 @@ export function finale(app: HTMLElement, room: Room, night: Night): { done: Prom
   (async () => {
     for (const p of room.players) room.setView(p, { type: 'wait', key: 'finale', title: 'The park is closing', text: 'Eyes on the big screen for the grand prize.', emoji: '🎪' });
     document.body.append(curtain);
+    preload('drumroll', 'fanfare', 'applause');
     void curtain.offsetWidth;
     curtain.classList.add('closed');
     await wait(1.7);
@@ -90,11 +92,12 @@ export function finale(app: HTMLElement, room: Room, night: Night): { done: Prom
     await wait(1.8);
 
     if (standing.length) {
-      podium.querySelector('.r3')?.classList.add('show'); await wait(1.3);
-      podium.querySelector('.r2')?.classList.add('show'); await wait(2);
-      podium.querySelector('.r1')?.classList.add('show'); await wait(1.4);
+      podium.querySelector('.r3')?.classList.add('show'); sfx('pop'); await wait(1.3);
+      podium.querySelector('.r2')?.classList.add('show'); sfx('pop'); await wait(0.8);
+      sting('drumroll'); await wait(2);
+      podium.querySelector('.r1')?.classList.add('show'); sting('fanfare'); await wait(1.4);
       bear.classList.add('drop');
-      await wait(1.1);
+      await wait(0.75); sfx('thud'); sting('applause'); await wait(0.35);
       banner.textContent = `🧸 ${winnerNames} win${winners.length > 1 ? '' : 's'} the giant teddy bear!`;
       banner.classList.add('show'); others.classList.add('show');
       const colours = ['#d9482b', '#e8b23a', '#f6ead2', '#2ab7a9', '#f15bb5'];
@@ -103,6 +106,7 @@ export function finale(app: HTMLElement, room: Room, night: Night): { done: Prom
       await wait(6);
     }
 
+    music('dusk');
     // Credits: the night's highlights scroll up over the dimmed stage. Click, Space or Esc skips them.
     const sections = credits(room, night, standing);
     const lines = sections.reduce((n, s) => n + s.lines.length + 3, 0);

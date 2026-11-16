@@ -46,6 +46,7 @@ export const hotpotato: GameDef = {
         holder = to; held = 0; botPass = 0.8 + Math.random() * 2.8;
         bombEl.classList.remove('hot');
         moveBomb(to);
+        ctx.buzz(to, 'turn'); ctx.sfx('whoosh');
         const key = ctx.key('bomb');
         for (const p of P) {
           if (p === to) ctx.view(p, { type: 'bomb', key, title: 'YOU HAVE THE BOMB!' });
@@ -81,6 +82,7 @@ export const hotpotato: GameDef = {
       off();
       bombEl.classList.remove('hot');
       const dead = holder;
+      ctx.sfx('boom');
       ctx.comment('out', dead, true);
       alive = alive.filter((p) => p !== dead);
       alive.forEach((p) => add(p, 60));

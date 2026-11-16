@@ -12,6 +12,7 @@ import { later } from './clock';
 import { BOT_LEVELS, initPause } from './pause';
 import { finale, newNight } from './finale';
 import { setFullscreen } from './settings';
+import { babble, duck, music, preload, sfx, sting, unlockSound, type Track } from './sound';
 
 const app = document.getElementById('app')!;
 const TICKETS = [100, 80, 65, 55, 48, 42, 37, 33, 30, 27, 25, 23];
@@ -21,7 +22,9 @@ let ctx: Ctx | null = null;
 let mode: 'boot' | 'lobby' | 'game' | 'results' | 'ending' | 'closed' = 'boot';
 let night = newNight();                  // what happened tonight, for the closing credits
 let closing: ReturnType<typeof finale> | null = null;
-let resultsDone: (() => void) | null = null;
+let resultsDone: ((next?: 'again' | 'park') => void) | null = null;
+/** Which tune plays under each part of the park. */
+const ZONE_MUSIC: Record<string, Track> = { Speedway: 'march', Lagoon: 'march', Midway: 'march', 'Art Alley': 'waltz', 'Fortune Tent': 'dusk', 'Haunted Manor': 'dusk' };
 type Menu = 'park' | 'list';
 let menu: Menu = 'list';          // 'park' = walk-around carnival (regular start), 'list' = plain list (performance start)
 let park: Park | null = null;
@@ -29,6 +32,7 @@ const explained = new Set<string>();     // games whose how-to-play page has bee
 let botLevel = (Number(qs.get('botlevel') ?? (() => { try { return localStorage.getItem('pgb-botlevel'); } catch { return null; } })() ?? 1) || 0) as 0 | 1 | 2;
 if (!(botLevel in BOT_LEVELS)) botLevel = 1;
 
+unlockSound();
 boot().catch((e) => fatal(String(e?.message || e)));
 
 function fatal(msg: string) {
@@ -53,12 +57,12 @@ async function boot() {
   const net = await createHost();
   net.onDown = (why) => fatal(why);
   room = new Room(net);
-  room.onChange = () => { if (mode === 'lobby') lobby(); };
+  room.onChange = () => { if (mode === 'lobby') lobby(); else if (mode === 'game') ctx?.crowdSync(); };
   room.onInput = (p, d) => {
     if (mode === 'game') ctx?.input(p, d);
     else if (mode === 'lobby' && park) park.input(p, d);
     else if (mode === 'lobby' && p.vip && d?.id === 'pick') start(GAMES.find((g) => g.meta.id === d.v));
-    else if (mode === 'results' && p.vip && d?.id === 'back') resultsDone?.();
+    else if (mode === 'results' && p.vip && d?.id === 'back') resultsDone?.(d.v === 'again' ? 'again' : 'park');
     else if (mode === 'ending') closing?.input(p, d);
   };
   for (let i = 0; i < Math.min(MAX_PLAYERS, Number(qs.get('bots')) || 0); i++) room.addBot(botLevel);
@@ -91,6 +95,9 @@ const fits = (g: GameDef) => room.players.length >= g.meta.min && room.players.l
 
 function lobby() {
   mode = 'lobby';
+  music('waltz');
+  room.promote();       // a free seat goes to whoever has waited longest in the audience
+  for (const s of room.audience) if (s.view.key !== 'audience') room.setView(s, { type: 'wait', key: 'audience', title: 'You’re in the audience', text: 'The park is full, but you can vote and cheer once a ride starts.', emoji: '👀' });
   const url = joinUrl(room.net);
   const qr = qrcode(0, 'M'); qr.addData(url); qr.make();
   const qrBox = h('div.qr'); qrBox.innerHTML = qr.createSvgTag({ cellSize: 4, margin: 2, scalable: true });
@@ -121,6 +128,7 @@ function lobby() {
 
   const guests = h('div.guests',
     h('h2', n ? `Guests in the park (${n}/${MAX_PLAYERS})` : 'Scan to get your ticket'),
+    room.audience.length ? h('div.audience-note', `👀 Audience (${room.audience.length}): ${room.audience.map((a) => a.name).join(', ')}`) : null,
     h('div.guest-grid', ...room.players.map((p) => h('div.guest' + (p.connected ? '' : '.away'), { title: 'Click to remove', onclick: () => room.remove(p), style: { background: p.color } },
       h('div.guest-av', p.avatar), h('div.guest-name', p.name), h('div.guest-meta', `${p.shape} ${p.tickets} 🎟️${p.vip ? ' · host' : ''}${p.bot ? ' · bot' : ''}`),
       p.bot ? h('button.guest-skill', { title: 'Click to change this bot’s skill', 'data-level': String(p.level), onclick: (e: Event) => { e.stopPropagation(); p.level = ((p.level + 1) % 3) as 0 | 1 | 2; lobby(); } }, BOT_LEVELS[p.level]) : null))),
@@ -149,14 +157,25 @@ function lobby() {
 
 async function start(game: GameDef | undefined) {
   if (!game || mode !== 'lobby' || !fits(game)) return;
-  mode = 'game';
   park?.destroy(); park = null;       // only one 3D scene is ever alive
+  // "Play again" on the results screen comes back round this loop; any other choice of game means a walk through the park.
+  while ((await play(game)) === 'again' && fits(game)) { /* same ride again */ }
+  if (['game', 'results'].includes(mode as string)) lobby();
+}
+
+/** Runs one round of a game and its results screen. Resolves with what the players want next. */
+async function play(game: GameDef): Promise<'again' | 'park' | 'gone'> {
+  mode = 'game';
+  music(ZONE_MUSIC[game.meta.zone] ?? 'march');
+  preload('drumroll', 'fanfare', 'applause', 'aww', 'ding');
   const players = [...room.players];
   const c = (ctx = new Ctx(room, app, players, game.meta));
   let result: GameResult | null = null;
   try {
     c.wait(players, game.meta.name, game.meta.blurb, game.meta.emoji);
-    c.show(h('div.center.intro', h('div.intro-emoji', game.meta.emoji), h('h1.big', game.meta.name), h('p.sub', game.meta.blurb), say('intro')));
+    const hello = say('intro');
+    c.show(h('div.center.intro', h('div.intro-emoji', game.meta.emoji), h('h1.big', game.meta.name), h('p.sub', game.meta.blurb), hello));
+    babble(hello.textContent || '');
     await c.sleep(3.5);
     if (!explained.has(game.meta.id) && !qs.get('game')) {      // first time this session: explain the rules
       explained.add(game.meta.id);
@@ -172,15 +191,16 @@ async function start(game: GameDef | undefined) {
   c.destroy();
   for (const [id, k] of c.moments.crash) night.crashes.set(id, (night.crashes.get(id) || 0) + k);
   for (const [id, k] of c.moments.out) night.outs.set(id, (night.outs.get(id) || 0) + k);
-  if (ctx !== c) return;
+  if (ctx !== c) return 'gone';
   ctx = null;
-  if (result) await results(game, result, players);
-  if (mode === 'game' || mode === 'results') lobby();
+  if (!result) return 'park';
+  const next = await results(game, result, players);
+  return (mode as string) === 'results' ? next : 'gone';
 }
 
 /** Abandons the ride in progress (or its results screen) and goes back to the park. */
 function leaveRide() {
-  if (mode === 'results') return resultsDone?.();
+  if (mode === 'results') return resultsDone?.('park');
   if (mode !== 'game') return;
   ctx?.destroy(); ctx = null; lobby();
 }
@@ -191,8 +211,9 @@ async function endGame() {
   const was = mode;
   mode = 'ending';
   ctx?.destroy(); ctx = null;
-  if (was === 'results') resultsDone?.();
+  if (was === 'results') resultsDone?.('park');
   park?.destroy(); park = null;
+  music(null);
   closing = finale(app, room, night);
   const next = await closing.done;
   closing = null;
@@ -218,7 +239,7 @@ function desktop() {
 const streaks = new Map<string, number>();     // wins in a row, per player, for the mascot to gloat about
 
 /** The placements screen: a podium revealed third to first, then the full table with prize tickets. */
-function results(game: GameDef, r: GameResult, players: Player[]): Promise<void> {
+function results(game: GameDef, r: GameResult, players: Player[]): Promise<'again' | 'park'> {
   mode = 'results';
   const overall = () => new Map([...room.players].sort((a, b) => b.tickets - a.tickets).map((p, i) => [p.id, i]));
   const before = overall();
@@ -263,26 +284,28 @@ function results(game: GameDef, r: GameResult, players: Player[]): Promise<void>
   }));
   const says = bubble(remark);
   const screen = h('div.results' + (team ? '.team' : ''), h('h1.big', r.headline || `${game.meta.emoji} ${game.meta.name}`), podium, table, says,
-    h('button.btn', { onclick: () => resultsDone?.() }, 'Back to the park'));
+    h('div.row.result-next', h('button.btn', { onclick: () => resultsDone?.('again'), 'data-next': 'again' }, '🔁 Play again'), h('button.btn', { onclick: () => resultsDone?.('park'), 'data-next': 'park' }, 'Back to the park')));
   app.replaceChildren(screen);
   // Reveal: third, second, a pause, then first; after that the table and the mascot.
   const timers: (() => void)[] = [];      // made with later(), so the pause menu freezes the reveal too
   const at = (sec: number, fn: () => void) => timers.push(later((sec * 1000) / SPEED, fn));
   if (podium) {
-    at(0.6, () => podium.querySelector('.r3')?.classList.add('show'));
-    at(1.8, () => podium.querySelector('.r2')?.classList.add('show'));
-    at(3.6, () => podium.querySelector('.r1')?.classList.add('show'));
-  }
-  at(podium ? 5 : 0.3, () => screen.classList.add('reveal'));
+    at(0.6, () => { podium.querySelector('.r3')?.classList.add('show'); sfx('pop'); });
+    at(1.6, () => { podium.querySelector('.r2')?.classList.add('show'); sfx('pop'); });
+    at(2.2, () => { duck(true); sting('drumroll'); });                 // two seconds of roll, then the hit lands with first place
+    at(4.2, () => { podium.querySelector('.r1')?.classList.add('show'); sting('fanfare', 0.9); sting('applause', 0.8); });
+  } else at(0.3, () => { if (r.coop && !((rows[0].s?.score ?? 0) > 0)) sting('aww'); else { sting('fanfare', 0.9); sting('applause', 0.7); } });
+  at(podium ? 6.2 : 0.3, () => { screen.classList.add('reveal'); sting('ding', 0.7); babble(remark); duck(false); });
 
   for (const row of rows) {
     const title = team ? (row.s?.label ?? game.meta.name) : `You came ${ordinal(row.rank + 1)}`, text = `+${row.won} 🎟️ · ${row.p.tickets} total`;
     room.setView(row.p, row.p.vip
-      ? { type: 'choice', key: 'results-vip', id: 'back', prompt: title, sub: text, options: [{ id: 'go', label: 'Back to the park' }] }
+      ? { type: 'choice', key: 'results-vip', id: 'back', prompt: title, sub: text, options: [{ id: 'again', label: '🔁 Play again' }, { id: 'go', label: 'Back to the park' }] }
       : { type: 'wait', key: 'results', title, text, emoji: !team && row.rank === 0 ? '🏆' : '🎟️' });
   }
   return new Promise((resolve) => {
-    timers.push(later(room.vip ? 75000 : 14000 / SPEED, () => resultsDone?.()));
-    resultsDone = () => { timers.forEach((cancel) => cancel()); resultsDone = null; resolve(); };
+    for (const s of room.audience) room.setView(s, { type: 'wait', key: 'results-audience', title: game.meta.name, text: 'Watch the big screen for the results.', emoji: '👀' });
+    timers.push(later(room.vip ? 75000 : 16000 / SPEED, () => resultsDone?.('park')));
+    resultsDone = (next = 'park') => { timers.forEach((cancel) => cancel()); duck(false); resultsDone = null; resolve(next); };
   });
 }

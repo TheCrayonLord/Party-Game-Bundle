@@ -68,6 +68,11 @@ function build(v: View, send: Send, color: string, root: HTMLElement): HTMLEleme
     case 'bomb': return bombPad(v, send);
     case 'walk': return walkPad(send);
     case 'rub': return rubPad(send);
+    case 'cheer': {
+      let last = 0;
+      root.classList.add('centered');
+      return [h('h2', v.title), h('p.sub', v.text), h('div.cheers', ...['👏', '🎉', '😂', '😱', '🔥', '👎'].map((e) => h('button.cheer', { onclick: () => { const now = Date.now(); if (now - last > 350) { last = now; send({ cheer: e }); } } }, e)))];
+    }
   }
 }
 
@@ -118,11 +123,39 @@ function drawPad(v: Extract<View, { type: 'draw' }>, send: Send, own: string): H
   return [h('h2', v.prompt), h('p.sub', v.sub || ''), h('div.drawwrap', canvas, tools), ...(v.oneStroke ? [] : [done])];
 }
 
+let gravity: [number, number] | null = null;      // along the phone's own right and top edges, whatever the screen is doing
+
+/**
+ * While a tilt controller is showing, the page must not flip to landscape when the phone is turned too far:
+ * buttons would move under the player's thumbs. Browsers can't reliably lock rotation, so the layout is
+ * turned back the other way instead. This keeps `data-rot` on <body> saying which way to turn it.
+ */
+export function watchRotation() {
+  const update = () => {
+    const landscape = innerWidth > innerHeight;
+    const angle = (screen.orientation?.angle ?? (window as any).orientation ?? 0) as number;
+    const cw = gravity ? gravity[0] > 0 : angle === 270 || angle === -90;      // which edge is down decides it; the angle is a fallback
+    document.body.dataset.rot = !landscape ? '' : cw ? 'cw' : 'ccw';
+  };
+  addEventListener('deviceorientation', (e) => {
+    if (e.beta == null || e.gamma == null) return;
+    const b = (e.beta * Math.PI) / 180, g = (e.gamma * Math.PI) / 180;
+    gravity = [Math.sin(g) * Math.cos(b), -Math.sin(b)];
+  });
+  addEventListener('resize', update); addEventListener('orientationchange', update);
+  update();
+}
+/** How far the tilt layout is currently turned to cancel the screen's rotation: 0, 90 or -90 degrees. */
+const turned = () => (!document.body.classList.contains('keep-portrait') ? 0 : document.body.dataset.rot === 'cw' ? 90 : document.body.dataset.rot === 'ccw' ? -90 : 0);
+/** Converts a movement on the glass into the layout's own right/down directions. */
+const local = (dx: number, dy: number): [number, number] => { const r = turned(); return r === -90 ? [-dy, dx] : r === 90 ? [dy, -dx] : [dx, dy]; };
+
 /** Which way gravity pulls across the screen: x = toward the right edge, y = toward the top edge (each about -1..1). */
 function lean(e: DeviceOrientationEvent): [number, number] | null {
   if (e.beta == null || e.gamma == null) return null;
   const b = (e.beta * Math.PI) / 180, g = (e.gamma * Math.PI) / 180;
   const gx = Math.sin(g) * Math.cos(b), gy = -Math.sin(b); // gravity along the phone's own x and y edges
+  if (turned()) return [gx, gy];       // the layout is pinned to the phone, so steer in the phone's own frame
   const angle = (screen.orientation?.angle ?? (window as any).orientation ?? 0) as number;
   if (angle === 90) return [-gy, gx];
   if (angle === 270 || angle === -90) return [gy, -gx];
@@ -143,8 +176,9 @@ function tiltPad(v: Extract<View, { type: 'tilt' }>, send: Send): HTMLElement[] 
     ty = clamp((level - l[1]) * 2.6, -1, 1);   // tipping the top edge up = climb
   });
   const fromTouch = (e: PointerEvent) => {
-    const r = pad.getBoundingClientRect();
-    touch = [clamp(((e.clientX - r.left) / r.width - 0.5) * 2.4, -1, 1), clamp((0.5 - (e.clientY - r.top) / r.height) * 2.4, -1, 1)];
+    const r = pad.getBoundingClientRect(), side = turned() !== 0;
+    const [dx, dy] = local(e.clientX - (r.left + r.width / 2), e.clientY - (r.top + r.height / 2));
+    touch = [clamp((dx / (side ? r.height : r.width)) * 2.4, -1, 1), clamp((-dy / (side ? r.width : r.height)) * 2.4, -1, 1)];
   };
   pad.onpointerdown = (e) => { pad.setPointerCapture(e.pointerId); fromTouch(e); };
   pad.onpointermove = (e) => { if (touch) fromTouch(e); };
@@ -164,7 +198,7 @@ function tiltPad(v: Extract<View, { type: 'tilt' }>, send: Send): HTMLElement[] 
     const zone = h('div.swipezone', h('div.swipe-arrow', '⬆'), h('div', { 'data-live': 'btn-' + sw.id }, sw.label));
     let start: [number, number, number] | null = null;
     zone.onpointerdown = (e) => { zone.setPointerCapture(e.pointerId); start = [e.clientX, e.clientY, performance.now()]; };
-    zone.onpointerup = (e) => { if (start && start[1] - e.clientY > 40 && performance.now() - start[2] < 700) send({ btn: sw.id }); start = null; };
+    zone.onpointerup = (e) => { if (start && -local(e.clientX - start[0], e.clientY - start[1])[1] > 40 && performance.now() - start[2] < 700) send({ btn: sw.id }); start = null; };
     out.push(zone);
   }
   for (const b of v.holds || []) {

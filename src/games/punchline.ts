@@ -35,7 +35,7 @@ export const punchline: GameDef = {
       ctx.show(h('div.col.pad', h('p.sub', `Duel ${di + 1} of ${duels.length}`), prompt, h('div.row', cardA, h('div.pts', 'VS'), cardB)));
       const voters = P.filter((p) => p !== pa && p !== pb);
       const key = ctx.key('duel');
-      const votes = await ctx.collect(voters, () => ({ type: 'choice', key, id: key, prompt: d.prompt, sub: 'Which is funnier?', options: [{ id: 'a', label: ta }, { id: 'b', label: tb }] }), 20);
+      const votes = await ctx.collect(voters, () => ({ type: 'choice', key, id: key, prompt: d.prompt, sub: 'Which is funnier?', options: [{ id: 'a', label: ta }, { id: 'b', label: tb }] }), 20, { crowd: true });
       const t = tally(votes), va = t.get('a') || [], vb = t.get('b') || [], total = va.length + vb.length;
       for (const [card, who, v] of [[cardA, pa, va], [cardB, pb, vb]] as const) {
         const pts = total ? Math.round((1000 * v.length) / total) + (v.length === total && total > 1 ? 250 : 0) : 0;
@@ -55,7 +55,7 @@ export const punchline: GameDef = {
     const entries = shuffle(P.filter((p) => finals.has(p.id)).map((p) => ({ p, text: String(finals.get(p.id)), card: h('div.answer', String(finals.get(p.id))) })));
     ctx.show(h('div.col.pad', prompt, h('div.row', ...entries.map((e) => e.card))));
     const vkey = ctx.key('fvote');
-    const votes = await ctx.collect(P, (p) => ({ type: 'choice', key: vkey, id: vkey, prompt: 'Pick your favourite', sub: finalPrompt, options: entries.filter((e) => e.p !== p).map((e) => ({ id: e.p.id, label: e.text })) }), 30);
+    const votes = await ctx.collect(P, (p) => ({ type: 'choice', key: vkey, id: vkey, prompt: 'Pick your favourite', sub: finalPrompt, options: entries.filter((e) => e.p !== p).map((e) => ({ id: e.p.id, label: e.text })) }), 30, { crowd: true });
     const t = tally(votes);
     for (const e of entries) {
       const v = t.get(e.p.id) || [];

@@ -54,3 +54,16 @@ textarea { resize: none; height: 5.5em; }
 .walk-arrow.up { grid-column: 2; grid-row: 1; } .walk-arrow.left { grid-column: 1; grid-row: 2; } .walk-arrow.down { grid-column: 2; grid-row: 2; } .walk-arrow.right { grid-column: 3; grid-row: 2; }
 .bigbtn { touch-action: none; }
 .bigbtn.held { background: var(--mustard); color: var(--ink); transform: translateY(3px); }
+
+/* Tilt controllers stay put when the phone is turned onto its side: the layout is turned back the other way. */
+body.keep-portrait[data-rot="ccw"] #app, body.keep-portrait[data-rot="cw"] #app { position: fixed; left: 50%; top: 50%; width: 100dvh; height: 100dvw; }
+body.keep-portrait[data-rot="ccw"] #app { transform: translate(-50%, -50%) rotate(-90deg); }
+body.keep-portrait[data-rot="cw"] #app { transform: translate(-50%, -50%) rotate(90deg); }
+.flash { position: fixed; inset: 0; pointer-events: none; z-index: 8; animation: flash .5s both; }
+.flash.hit { box-shadow: inset 0 0 0 14px #ff4a2e, inset 0 0 4em #ff4a2e; }
+.flash.good { box-shadow: inset 0 0 0 14px #6fe36f, inset 0 0 3em #6fe36f; }
+.flash.turn { box-shadow: inset 0 0 0 14px #ffd23f, inset 0 0 4em #ffd23f; }
+@keyframes flash { from { opacity: 1; } to { opacity: 0; } }
+.cheers { display: grid; grid-template-columns: repeat(3, 1fr); gap: .6em; width: 100%; }
+.cheer { font-size: 2.6em; padding: .25em 0; border-radius: 16px; border: 3px solid var(--cream); background: rgba(255,255,255,.14); }
+.cheer:active { transform: scale(.9); background: var(--mustard); }
