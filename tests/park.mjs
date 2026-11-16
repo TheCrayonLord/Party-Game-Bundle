@@ -31,7 +31,7 @@ for (let i = 0; i < 2; i++) {
 await host.waitForTimeout(600);
 if (shots) { await host.screenshot({ path: `${shots}/park-arrive.png` }); await phones[0].screenshot({ path: `${shots}/park-phone.png` }); }
 
-// Both walk straight up the main path to the ride in the middle of the park (hold the up arrow).
+// Both walk up the main path and a step to the right, to the ride just beyond the plaza.
 const hold = (p, dir, ms) => p.evaluate(async ([dir, ms]) => {
   const b = document.querySelector('.walk-arrow.' + dir);
   b.setPointerCapture = () => {};
@@ -39,7 +39,8 @@ const hold = (p, dir, ms) => p.evaluate(async ([dir, ms]) => {
   await new Promise((r) => setTimeout(r, ms));
   b.dispatchEvent(new PointerEvent('pointerup', { pointerId: 1, bubbles: true }));
 }, [dir, ms]);
-await Promise.all(phones.map((p) => hold(p, 'up', 1650)));
+await Promise.all(phones.map((p) => hold(p, 'up', 1750)));
+await Promise.all(phones.map((p) => hold(p, 'right', 270)));
 await host.waitForTimeout(1500);
 const banner = await host.textContent('.park-banner');
 const phoneSays = await phones[0].textContent('[data-live="big"]');

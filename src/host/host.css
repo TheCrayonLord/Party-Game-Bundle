@@ -227,6 +227,6 @@ body.host { font-size: clamp(14px, 1.5vw, 26px); }
 .park-count { font-weight: 800; color: var(--red); }
 .park-count:empty { display: none; }
 .park-banner { position: absolute; left: 50%; bottom: .7em; transform: translateX(-50%); background: rgba(20,12,35,.78); border-radius: 999px; padding: .35em 1.2em; font-family: var(--display); font-size: 1.15em; color: var(--mustard); text-align: center; max-width: 80%; }
-.park-overlay > .booth { position: absolute; left: .8em; bottom: .8em; font-size: .62em; transform: rotate(-2deg); transform-origin: bottom left; }
+.park-overlay > .booth { position: absolute; left: .7em; top: .7em; font-size: .5em; transform: rotate(-2deg); transform-origin: top left; }
 .park-overlay > .mascot { position: absolute; right: 1em; top: .7em; font-size: .75em; max-width: 24em; }
 .park-overlay > .bot-row { position: absolute; right: 1em; bottom: .8em; font-size: .8em; }
