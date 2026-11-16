@@ -127,17 +127,46 @@ export async function runRace(ctx: Ctx, cfg: RaceConfig): Promise<Score[]> {
   const mat = (c: string, opacity = 1) => new THREE.MeshLambertMaterial({ color: c, flatShading: true, transparent: opacity < 1, opacity });
   const at = (i: number, off = 0) => ({ x: S[i].x + NRM[i].x * off, z: S[i].z + NRM[i].z * off });
 
-  const ribbon = (half: number, y: number, color: string) => {
+  const ribbon = (half: number, y: number, color: string, opacity = 1) => {
     const pos: number[] = [], idx: number[] = [];
     for (let i = 0; i < N; i++) { const a = S[i], n = NRM[i]; pos.push(a.x + n.x * half, y, a.z + n.z * half, a.x - n.x * half, y, a.z - n.z * half); }
     for (let i = 0; i < N; i++) { const a = i * 2, b = ((i + 1) % N) * 2; idx.push(a, b, a + 1, b, b + 1, a + 1); }
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
-    scene.add(new THREE.Mesh(g, new THREE.MeshLambertMaterial({ color, side: THREE.DoubleSide })));
+    scene.add(new THREE.Mesh(g, new THREE.MeshLambertMaterial({ color, side: THREE.DoubleSide, transparent: opacity < 1, opacity })));
   };
   const ground = new THREE.Mesh(new THREE.PlaneGeometry(600, 400), mat(th.ground)); ground.rotation.x = -Math.PI / 2; ground.position.y = -0.1; scene.add(ground);
   if (!boat) ribbon(WIDTH / 2 + 0.9, 0, th.edge);     // painted edge
-  ribbon(WIDTH / 2, 0.05, th.road);        // tarmac / water
+  ribbon(WIDTH / 2, 0.05, boat ? '#ffffff' : th.road, boat ? 0.13 : 1);        // tarmac, or a paler lane of water
+
+  // Water: two layers of ripples drifting in different directions, plus foam trails behind the boats.
+  const waterLayers: THREE.Texture[] = [];
+  const wakes: { m: THREE.Mesh; life: number }[] = [];
+  let wakeAt = 0;
+  if (boat) {
+    const ripples = (seed: number) => {
+      const c = document.createElement('canvas'); c.width = c.height = 256;
+      const g = c.getContext('2d')!;
+      g.lineCap = 'round';
+      for (let i = 0; i < 26; i++) {         // short curved glints, light and dark
+        const x = ((i * 97 + seed * 53) % 256), y = ((i * 61 + seed * 29) % 256), w = 18 + ((i * 13) % 26);
+        g.strokeStyle = i % 3 ? 'rgba(255,255,255,0.20)' : 'rgba(0,20,40,0.16)'; g.lineWidth = 2 + (i % 3);
+        for (const dx of [-256, 0, 256]) { g.beginPath(); g.moveTo(x + dx, y); g.quadraticCurveTo(x + dx + w / 2, y - 5, x + dx + w, y); g.stroke(); }
+      }
+      const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping;
+      return t;
+    };
+    for (const [i, rep] of [[0, 17], [1, 10.5]]) {
+      const tex = ripples(i + 1); tex.repeat.set(rep * 1.5, rep); waterLayers.push(tex);
+      const layer = new THREE.Mesh(new THREE.PlaneGeometry(600, 400), new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false }));
+      layer.rotation.x = -Math.PI / 2; layer.position.y = 0.02 + i * 0.01; scene.add(layer);
+    }
+    const foam = new THREE.CircleGeometry(1, 8);
+    for (let i = 0; i < 140; i++) {
+      const m = new THREE.Mesh(foam, new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0, depthWrite: false }));
+      m.rotation.x = -Math.PI / 2; m.position.y = 0.09; m.visible = false; scene.add(m); wakes.push({ m, life: 0 });
+    }
+  }
   const line = new THREE.Mesh(new THREE.BoxGeometry(WIDTH, 0.05, 1.2), mat('#f6ead2'));
   line.position.set(S[0].x, 0.1, S[0].z); line.rotation.y = Math.atan2(T[0].x, T[0].z); scene.add(line);
   // scenery, kept off the course
@@ -169,16 +198,15 @@ export async function runRace(ctx: Ctx, cfg: RaceConfig): Promise<Score[]> {
   fit(); addEventListener('resize', fit); ctx.onEnd(() => removeEventListener('resize', fit));
 
   // ---------- racers ----------
-  const label = (p: Player) => {
-    const c = document.createElement('canvas'); c.width = 256; c.height = 64;
+  // No floating name tags (they hid other racers). Each vehicle carries its player's shape on top instead.
+  const badge = (p: Player) => {
+    const c = document.createElement('canvas'); c.width = c.height = 64;
     const g = c.getContext('2d')!;
-    g.fillStyle = p.color; g.strokeStyle = '#1b1220'; g.lineWidth = 5;
-    g.beginPath(); g.roundRect(3, 3, 250, 58, 28); g.fill(); g.stroke();
-    g.fillStyle = '#1b1220'; g.font = 'bold 34px Trebuchet MS, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
-    g.fillText(`${p.shape} ${p.name}`, 128, 34, 236);
-    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), depthTest: false }));
-    s.scale.set(9, 2.25, 1); s.position.y = 4.6; s.renderOrder = 10;
-    return s;
+    g.fillStyle = '#fbf5e6'; g.beginPath(); g.arc(32, 32, 30, 0, 7); g.fill();
+    g.fillStyle = '#1b1220'; g.font = 'bold 40px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(p.shape, 32, 35);
+    const m = new THREE.Mesh(new THREE.CircleGeometry(0.75, 12), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c) }));
+    m.rotation.x = -Math.PI / 2; m.rotation.z = Math.PI;
+    return m;
   };
   const build = (p: Player) => {
     const g = new THREE.Group();
@@ -205,7 +233,8 @@ export async function runRace(ctx: Ctx, cfg: RaceConfig): Promise<Score[]> {
       g.add(body, nose, head);
       for (const [wx, wz] of [[-1.1, 1], [1.1, 1], [-1.1, -1], [1.1, -1]]) { const w = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.8, 0.9), mat('#1b1220')); w.position.set(wx, 0.4, wz); g.add(w); }
     }
-    g.add(label(p)); g.scale.setScalar(1.5); scene.add(g);
+    if (!skin?.length) { const b = badge(p); b.position.set(0, boat ? 0.95 : 1.07, boat ? 0.9 : 0.9); g.add(b); }
+    g.scale.setScalar(1.5); scene.add(g);
     return g;
   };
   const racers: Racer[] = ctx.players.map((p, i) => {
@@ -351,6 +380,24 @@ export async function runRace(ctx: Ctx, cfg: RaceConfig): Promise<Score[]> {
         }
         for (const b of boxes) { b.m.rotation.y = t * 2; b.m.rotation.x = t; if (b.back > 0 && (b.back -= dt) <= 0) b.m.visible = true; }
         for (let i = oils.length - 1; i >= 0; i--) { const o = oils[i]; o.age += dt; if (o.age > 25) { scene.remove(o.m); oils.splice(i, 1); } }
+      }
+      if (boat) {
+        waterLayers[0].offset.set(t * 0.03, Math.sin(t * 0.4) * 0.05);
+        waterLayers[1].offset.set(-t * 0.02, t * 0.025);
+        if (clock > 0 && t - wakeAt > 0.09) {      // drop a puff of foam behind every moving boat
+          wakeAt = t;
+          for (const k of racers) {
+            if (Math.hypot(k.vx, k.vz) < 6) continue;
+            const w = wakes.find((x) => x.life <= 0); if (!w) break;
+            w.life = 1; w.m.visible = true; w.m.position.x = k.x - Math.sin(k.th) * 2.6; w.m.position.z = k.z - Math.cos(k.th) * 2.6;
+          }
+        }
+        for (const w of wakes) if (w.life > 0) {
+          w.life -= dt * 0.9;
+          (w.m.material as THREE.MeshBasicMaterial).opacity = Math.max(0, w.life) * 0.5;
+          w.m.scale.setScalar(0.7 + (1 - w.life) * 1.6);
+          if (w.life <= 0) w.m.visible = false;
+        }
       }
       for (const pl of pools) pl.m.rotation.y = -t * 3;
       for (const w of waves) w.m.position.y = 0.3 + Math.sin(t * 3 + w.i) * 0.15;
