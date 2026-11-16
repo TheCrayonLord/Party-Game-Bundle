@@ -24,12 +24,16 @@ Tilt (`DeviceOrientation`) only works on a secure page. A Node server on the hos
 
 | Option | HTTPS? | Verdict |
 |---|---|---|
-| **Static site on HTTPS hosting (e.g. GitHub Pages) + WebRTC data channels** | Yes, free | **Start here.** Matches the brief's "P2P first". Needs internet only for the handshake; game traffic stays on the LAN. |
-| Small hosted WebSocket relay (`wss://`) | Yes | **The reliability fallback.** Works on networks where WebRTC fails (guest Wi-Fi with client isolation, strict NAT). |
+| **Static site on HTTPS hosting (e.g. GitHub Pages) + WebRTC data channels** | Yes, free | **Start here.** Matches the brief's "P2P first". Direct phone-to-host connection when the networks allow it. |
+| Small hosted relay (`wss://` WebSocket relay or TURN) | Yes | **Automatic fallback, built in M0.** Needed whenever a direct connection can't be made: phones on mobile data, guest Wi-Fi with client isolation, strict NAT. |
 | Node server on host PC, self-signed cert | Scary browser warnings on every phone | Avoid. |
 | Node server on host PC + tunnel (cloudflared etc.) | Yes | Viable "offline-ish" option later; adds setup for the host. |
 
 So the "small Node server" from the brief is still built — but as a tiny **relay that can run anywhere with TLS**, not as a LAN-only server. Both transports sit behind one interface so games never know which is in use.
+
+**How it looks to players:** the host opens the game's web address on the computer and gets the game browser and lobby. The lobby's QR code is that same address plus the room code. Phones scan it and land on the controller page. "Static hosting" only means the site is plain files with no server code of ours behind it.
+
+**Same Wi-Fi is not required.** Internet is required (decided), and players may be on any network, including mobile data. Direct WebRTC often fails between different networks (mobile carriers especially), so each phone tries a direct connection first and silently falls back to the relay. Relayed input adds some delay; M0 measures whether tilt racing still feels good over the relay.
 
 ### 2.2 Architecture
 
@@ -69,7 +73,7 @@ TypeScript, Vite, Canvas 2D on the host (PixiJS only if performance demands it),
 - **Screen wake lock** on phones during play.
 - **VIP player.** First player to join controls menus from their phone, so nobody has to walk to the computer.
 - **Late join = audience.** People who join mid-game can vote in voting games and wait for the next round otherwise.
-- **Family filter + kick** for text and drawing games.
+- **Kick** for text and drawing games. No family filter for now (decided); a "family friendly" toggle in the lobby is a later addition, so prompt content is tagged from the start to make that cheap.
 
 ---
 
@@ -78,9 +82,9 @@ TypeScript, Vite, Canvas 2D on the host (PixiJS only if performance demands it),
 Build order follows the brief. Each milestone ends with a real-people playtest; the exit criteria are what must be true before moving on.
 
 ### M0 — Platform foundation
-Lobby with QR + room code, join flow, player identity (name, color, shape), transport abstraction with WebRTC, reconnect, VIP menu control, game picker, module API, bots, iOS "Enable motion" flow, controller kit v0 (tilt, button).
+Lobby with QR + room code, join flow, player identity (name, color, shape), transport abstraction with WebRTC and the relay fallback, reconnect, VIP menu control, game picker, module API, bots, iOS "Enable motion" flow, controller kit v0 (tilt, button).
 Includes a throwaway **tech-test game**: every player is a dot they steer by tilt.
-**Exit:** 8 real phones (mixed iOS/Android) join in under a minute, steer dots with no noticeable lag for 10 minutes, and survive a phone lock/unlock.
+**Exit:** 8 real phones (mixed iOS/Android) join in under a minute, steer dots with no noticeable lag for 10 minutes, survive a phone lock/unlock, and at least one phone plays on mobile data instead of the host's Wi-Fi.
 
 ### M1 — Tilt Kart (builds the racing engine)
 Racing engine: spline-based tracks, checkpoints/lap counting, kart physics, collisions, item system, catch-up logic, results. 3 tracks.
@@ -97,13 +101,13 @@ Adds swipe/flick, rub and shake to the controller kit. Three small games; each s
 Drawing pad (strokes sent as vectors, replayable on TV), the submit/vote/reveal pipeline, gallery reveal. Draw Your Racer comes last in this block because it needs both the drawing kit and the racing engine.
 
 ### M5 — Word / bluffing: Fib Finder, Punchline Duel, Secret Agent
-Text input, content packs (prompts, trivia, locations), duplicate/truth detection, family filter.
+Text input, content packs (prompts, trivia, locations), duplicate/truth detection, content tagged for a future family-friendly toggle.
 
 ### M6 — Co-op / strategy: Heist Crew, Dungeon Vote
 Asymmetric per-phone information, puzzle generators, branching story content.
 
 ### M7 — Pack polish
-Cross-game party scoring / playlists, sound and music pass, consistent visual language, settings, accessibility pass, relay fallback hardened, final content pass.
+Cross-game party scoring / playlists, sound and music pass (style chosen from audio samples first — no audio is produced for the game until samples are approved), family-friendly lobby toggle, consistent visual language, settings, accessibility pass, relay fallback hardened, final content pass.
 
 **Rough sizing (one developer):** M0 2–3 weeks · M1 3–4 · M2 1–2 · M3 2–3 · M4 3–4 · M5 2–3 · M6 3–4 · M7 2–3. First playable party night is at the end of M1.
 
@@ -214,14 +218,15 @@ The picker greys out games that don't fit the current room size.
 
 | Risk | Impact | Mitigation |
 |---|---|---|
-| WebRTC fails on some Wi-Fi (client isolation, strict NAT) | Some rooms can't play at all | Transport abstraction from day one; `wss` relay fallback; auto-detect and switch |
+| Direct WebRTC fails (players on different networks, mobile data, client isolation) | Some players can't join | Transport abstraction and relay fallback both in M0; auto-detect and switch |
+| Relay adds input delay | Tilt racing feels sluggish for relayed players | Measure in M0; host relay close to players; show a connection-quality icon per player |
 | iOS motion permission confuses players | Half the room can't steer | Full-screen "Enable motion" step in the join flow with a live tilt preview; touch fallback |
 | Tilt feels laggy or twitchy | Racing games aren't fun | Calibrate neutral pose at countdown, deadzone + response curve, unreliable channel, measure latency in M0 |
 | 12 players unreadable on TV | Racing chaos | Color + shape + name, bold outlines, "ping me" tap, wide tracks, test with bots from M1 |
 | Phones sleep / tabs reload | Players drop mid-game | Wake lock, token-based reconnect, bot takes over in racing games until they return |
 | Content volume (prompts, trivia, puzzles, rooms) | Games get stale by night two | Content as data files, target counts per game, treat writing as a scheduled task rather than an afterthought |
 | 14 games is a lot | Never ships | Each milestone is a shippable pack on its own; shared kits make later games cheap |
-| Offensive text/drawings | Awkward family night | Family filter, VIP can kick or censor a submission |
+| Offensive text/drawings | Awkward with the wrong crowd | VIP can kick or censor a submission; family-friendly lobby toggle later |
 
 ---
 
@@ -253,9 +258,10 @@ Ranked by how much existing tech they reuse:
 
 ---
 
-## 9. Open questions
+## 9. Decisions
 
-1. **Hosting:** is GitHub Pages (or similar static HTTPS hosting) acceptable as the way players load the game? It's the simplest way to satisfy the HTTPS requirement for tilt.
-2. **Offline play:** does the game need to work with no internet at all? That requires the tunnel or certificate route and adds real setup cost for hosts.
-3. **Audio:** music and sound effects on the TV are assumed; is there a source for them, or should the plan include generated/synth audio?
-4. **Tone:** family-friendly by default with an optional adult content pack, or one tone throughout?
+- **Internet:** required; no offline mode.
+- **Networks:** players do not need to share the host's Wi-Fi.
+- **Tone:** no family filter; a family-friendly lobby toggle may come later.
+- **Audio:** samples must be heard and approved before any audio is generated for the game.
+- **Hosting:** static HTTPS site, pending confirmation.
