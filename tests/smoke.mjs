@@ -15,7 +15,8 @@ const watch = (page, who) => {
 
 const hostPage = await (await browser.newContext({ viewport: { width: 1280, height: 720 } })).newPage();
 watch(hostPage, 'host');
-await hostPage.goto(`${base}/?bots=${bots}&speed=${speed}`);
+const extra = process.env.EXTRA || ''; // e.g. net=p&peerhost=localhost&peerport=9000 to test WebRTC
+await hostPage.goto(`${base}/?bots=${bots}&speed=${speed}&${extra}`);
 await hostPage.waitForSelector('.code');
 const code = (await hostPage.textContent('.code')).trim();
 console.log('room', code);
@@ -25,7 +26,7 @@ for (let i = 0; i < Number(phonesN); i++) {
   const c = await browser.newContext({ ...devices['Pixel 5'] });
   const p = await c.newPage();
   watch(p, 'phone' + i);
-  await p.goto(`${base}/play.html?room=${code}&net=r`);
+  await p.goto(`${base}/play.html?room=${code}&${extra || 'net=r'}`);
   await p.fill('input[placeholder="Your name"]', 'Tester' + (i + 1));
   await p.click('text=Get my ticket');
   await p.waitForSelector('.ticket');

@@ -335,4 +335,7 @@ Ranked by how much existing tech they reuse:
 - **Theme:** retro 1950s theme park, low-poly 3D in Three.js; park map as the main menu; six zones; prize tickets and a stuffed-animal finale.
 - **Boot option:** regular start (full park) or performance start (plain game list).
 - **Build order:** plain menu + QR join + Tilt Kart first, then the park hub, then the remaining games.
+- **Build:** started. Current state is tracked in README.md under "Build status".
+- **Mascot:** open. Candidates are in MASCOTS.md.
+- **Audio style:** open. Samples are in audio-samples/.
 - **Hosting:** static HTTPS site, pending confirmation.
