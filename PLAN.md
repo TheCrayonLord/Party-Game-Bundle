@@ -124,6 +124,19 @@ A 1950s carnival at dusk: faded paint, string lights, jingly organ music, a vint
 - Phones show the running ticket count on the player's ticket; the park map shows a leaderboard on a painted scoreboard.
 - The host can "close the park" at any time. Finale at the prize booth: players are called up from last to first, each receiving a prize sized to their rank (a comb, a goldfish, a kazoo…), and the winner gets the giant stuffed animal under fireworks.
 
+### 3.6 Regular start vs. performance start
+On boot, before the lobby, the host picks one of two buttons:
+
+- **Regular start** — the full park: ticket booth, turnstile, park map, camera swoop, prize ceremony.
+- **Performance start** — for slower computers. A plain lobby with the QR code and a plain list of games; no 3D park, no swoop. Prize tickets and the final ranking still work, shown as simple screens. Games also start on their lowest graphics setting.
+
+Details:
+- Performance start is the plain menu built in M0, kept permanently instead of thrown away when the park arrives. Both menus drive the same lobby, player and scoring code, so games don't know which one launched them.
+- The choice is remembered for next time and can be changed from settings without restarting the room.
+- If the park runs below a smooth frame rate for several seconds, the game offers to switch to performance start.
+
+**The park must cost nothing while a game is running.** When a game starts, the park stops drawing entirely and its models and textures are unloaded; it is reloaded behind the results screen when the game ends. Only one 3D scene is ever alive at a time. This is an exit criterion for M2: a Tilt Kart race launched from the park must run at the same frame rate as one launched from the plain list.
+
 ## 4. Milestones
 
 Build order follows the brief. Each milestone ends with a real-people playtest; the exit criteria are what must be true before moving on.
@@ -139,7 +152,8 @@ Racing engine: spline-based tracks, checkpoints/lap counting, kart physics, coll
 
 ### M2 — The park hub
 Replaces the plain menu with the 3D park: entrance and ticket booth, phone tickets, turnstile walk-in, tilted park map with wandering crowd, swipe navigation, camera swoop into Tilt Kart, "closed" and "coming soon" states, prize tickets and scoreboard, end-of-night prize ceremony. All six zones are laid out; only the Speedway has a working ride.
-**Exit:** runs smoothly on an ordinary laptop with integrated graphics; from scanning the QR to starting a race still takes under a minute; nobody is confused about how to pick a game.
+Adds the boot screen with regular / performance start.
+**Exit:** a race launched from the park runs at the same frame rate as one launched from the plain list; the park runs smoothly on an ordinary laptop with integrated graphics; from scanning the QR to starting a race still takes under a minute; nobody is confused about how to pick a game.
 
 ### M3 — Riptide Regatta
 Proves the racing engine is reusable: new physics profile (momentum, drift), currents/waves/whirlpools as track hazards, swipe-to-boost. 3 courses.
@@ -276,7 +290,7 @@ The picker greys out games that don't fit the current room size.
 | 12 players unreadable on TV | Racing chaos | Color + shape + name, bold outlines, "ping me" tap, wide tracks, test with bots from M1 |
 | Phones sleep / tabs reload | Players drop mid-game | Wake lock, token-based reconnect, bot takes over in racing games until they return |
 | Content volume (prompts, trivia, puzzles, rooms) | Games get stale by night two | Content as data files, target counts per game, treat writing as a scheduled task rather than an afterthought |
-| 3D park is slow on the host's laptop | Stutter on the TV, laggy racing | Low-poly, few real lights, capped resolution, quality setting; tested on integrated graphics in M2 |
+| 3D park is slow on the host's laptop | Stutter on the TV, laggy racing | Performance start (plain list, no park); park fully stopped and unloaded during games; low-poly, few real lights, capped resolution; tested on integrated graphics in M2 |
 | The park becomes a time sink | Polish on the menu instead of games | M2 is time-boxed; simple-shape models first, prettier ones only in the polish milestone |
 | Menu ceremony slows the party down | Breaks "playing in 30 seconds" | Swoop is short and skippable; "play again" skips the map entirely |
 | 14 games is a lot | Never ships | Each milestone is a shippable pack on its own; shared kits make later games cheap |
@@ -319,5 +333,6 @@ Ranked by how much existing tech they reuse:
 - **Tone:** no family filter; a family-friendly lobby toggle may come later.
 - **Audio:** samples must be heard and approved before any audio is generated for the game.
 - **Theme:** retro 1950s theme park, low-poly 3D in Three.js; park map as the main menu; six zones; prize tickets and a stuffed-animal finale.
+- **Boot option:** regular start (full park) or performance start (plain game list).
 - **Build order:** plain menu + QR join + Tilt Kart first, then the park hub, then the remaining games.
 - **Hosting:** static HTTPS site, pending confirmation.
