@@ -22,20 +22,68 @@ async function chooseCourse(ctx: Ctx, kind: 'kart' | 'boat'): Promise<Course> {
   return list[Number(v)] ?? pick(list);
 }
 
-interface Course { name: string; pts: [number, number][] }
-/** Three courses per kind of race. The host player picks one (or leaves it to chance) before each race. */
+type Prop = 'tent' | 'tree' | 'lolly' | 'gumdrop' | 'cactus' | 'rock' | 'pine' | 'snowman' | 'tower' | 'palm' | 'bush' | 'islet' | 'lighthouse' | 'lily' | 'stump' | 'iceberg' | 'lava';
+interface Theme { ground: string; road: string; edge: string; sky: string; props: Prop[]; /** Light colour; warm sunset by default. */ light?: string }
+interface Course { name: string; theme: Theme; pts: [number, number][] }
+
+/** Six kart tracks and five boat courses, each with its own look. The host player picks one before each race. */
 export const COURSES: Record<'kart' | 'boat', Course[]> = {
   kart: [
-    { name: 'Big Top Loop', pts: [[-60, -20], [-40, -34], [0, -30], [30, -36], [58, -22], [62, 4], [44, 22], [18, 14], [0, 28], [-30, 32], [-56, 20], [-66, 0]] },
-    { name: 'Pretzel Bend', pts: [[-62, 0], [-50, -28], [-20, -34], [0, -14], [22, -32], [54, -28], [64, -4], [50, 22], [20, 30], [-8, 16], [-34, 32], [-58, 22]] },
-    { name: 'Hourglass Speedway', pts: [[-66, -26], [-24, -20], [18, -32], [60, -26], [68, 2], [60, 30], [22, 22], [-18, 32], [-58, 30], [-68, 2]] },
+    { name: 'Big Top Loop', theme: { ground: '#2f6b5e', road: '#4a3b5c', edge: '#f6ead2', sky: '#33224f', props: ['tent', 'tree', 'tree', 'tree'] },
+      pts: [[-60, -20], [-40, -34], [0, -30], [30, -36], [58, -22], [62, 4], [44, 22], [18, 14], [0, 28], [-30, 32], [-56, 20], [-66, 0]] },
+    { name: 'Candy Pretzel', theme: { ground: '#e79bb8', road: '#7a4a62', edge: '#ffffff', sky: '#5b2a5e', props: ['lolly', 'gumdrop', 'gumdrop', 'lolly'] },
+      pts: [[-62, 0], [-50, -28], [-20, -34], [0, -14], [22, -32], [54, -28], [64, -4], [50, 22], [20, 30], [-8, 16], [-34, 32], [-58, 22]] },
+    { name: 'Hourglass Canyon', theme: { ground: '#d8a45c', road: '#5a4636', edge: '#f3d9a4', sky: '#6b3a3a', props: ['cactus', 'rock', 'cactus', 'rock'] },
+      pts: [[-66, -26], [-24, -20], [18, -32], [60, -26], [68, 2], [60, 30], [22, 22], [-18, 32], [-58, 30], [-68, 2]] },
+    { name: 'Snowball Circuit', theme: { ground: '#e6f1fb', road: '#5d6f85', edge: '#8fc7ea', sky: '#2c3e63', props: ['pine', 'pine', 'snowman', 'pine'], light: '#eaf3ff' },
+      pts: [[-60, -24], [0, -34], [60, -24], [68, 4], [58, 28], [0, 36], [-58, 28], [-68, 4]] },
+    { name: 'Neon Zigzag', theme: { ground: '#141026', road: '#2a2440', edge: '#ff4fd8', sky: '#0b0818', props: ['tower', 'tower', 'tower'] },
+      pts: [[-66, -10], [-52, -32], [-28, -18], [-6, -34], [18, -18], [42, -34], [64, -16], [66, 14], [40, 32], [0, 24], [-40, 34], [-66, 16]] },
+    { name: 'Jungle Horseshoe', theme: { ground: '#1f5a2e', road: '#6b4a2e', edge: '#c9a36a', sky: '#1d3a3a', props: ['palm', 'bush', 'palm', 'bush', 'rock'] },
+      pts: [[-66, -30], [-40, -34], [-28, -10], [-10, 8], [14, 8], [30, -10], [42, -34], [66, -30], [70, 10], [50, 34], [0, 36], [-50, 34], [-70, 10]] },
   ],
   boat: [
-    { name: 'Lazy Lagoon', pts: [[-62, -8], [-46, -30], [-10, -36], [26, -32], [58, -24], [68, 2], [54, 28], [20, 34], [-16, 32], [-48, 28], [-68, 10]] },
-    { name: 'Kidney Cove', pts: [[-64, -14], [-38, -34], [0, -22], [36, -36], [64, -16], [62, 14], [38, 34], [8, 16], [-22, 34], [-54, 28], [-70, 6]] },
-    { name: 'Serpent Strait', pts: [[-66, -16], [-34, -34], [6, -30], [30, -14], [54, -28], [68, -2], [56, 26], [22, 34], [-6, 20], [-32, 34], [-60, 26], [-70, 4]] },
+    { name: 'Lazy Lagoon', theme: { ground: '#1c8fa6', road: '#27a3ba', edge: '#27a3ba', sky: '#33224f', props: ['islet', 'islet', 'rock'] },
+      pts: [[-62, -8], [-46, -30], [-10, -36], [26, -32], [58, -24], [68, 2], [54, 28], [20, 34], [-16, 32], [-48, 28], [-68, 10]] },
+    { name: 'Sunset Harbour', theme: { ground: '#5b3f78', road: '#70508f', edge: '#70508f', sky: '#c9623f', props: ['lighthouse', 'rock', 'rock'] },
+      pts: [[-64, -14], [-38, -34], [0, -22], [36, -36], [64, -16], [62, 14], [38, 34], [8, 16], [-22, 34], [-54, 28], [-70, 6]] },
+    { name: 'Serpent Swamp', theme: { ground: '#35583a', road: '#43704c', edge: '#43704c', sky: '#1f2f2a', props: ['lily', 'lily', 'stump', 'lily'] },
+      pts: [[-66, -14], [-36, -34], [4, -32], [30, -20], [56, -32], [70, -4], [56, 26], [22, 34], [-6, 22], [-34, 34], [-60, 26], [-70, 6]] },
+    { name: 'Iceberg Ring', theme: { ground: '#3f7fa8', road: '#5196c2', edge: '#5196c2', sky: '#23395c', props: ['iceberg', 'iceberg', 'iceberg'], light: '#eaf3ff' },
+      pts: [[-62, -20], [-20, -36], [24, -36], [62, -22], [70, 6], [52, 30], [10, 36], [-34, 34], [-64, 22], [-72, 0]] },
+    { name: 'Volcano Bay', theme: { ground: '#2a2030', road: '#3d2c44', edge: '#3d2c44', sky: '#3a1414', props: ['lava', 'lava', 'rock'] },
+      pts: [[-64, -22], [-24, -36], [20, -28], [60, -34], [72, -6], [60, 26], [24, 36], [0, 20], [-28, 34], [-60, 30], [-72, 4]] },
   ],
 };
+
+/** Builds one piece of scenery out of simple shapes. */
+function makeProp(kind: Prop): THREE.Group {
+  const g = new THREE.Group();
+  const m = (c: string) => new THREE.MeshLambertMaterial({ color: c, flatShading: true });
+  const lit = (c: string) => new THREE.MeshBasicMaterial({ color: c });
+  const add = (geo: THREE.BufferGeometry, material: THREE.Material, x: number, y: number, z: number) => { const mesh = new THREE.Mesh(geo, material); mesh.position.set(x, y, z); g.add(mesh); return mesh; };
+  switch (kind) {
+    case 'tent': add(new THREE.ConeGeometry(4, 5, 8), m(pick(['#d9482b', '#e8b23a', '#f6ead2'])), 0, 2.5, 0); break;
+    case 'tree': add(new THREE.ConeGeometry(2, 6, 5), m('#1f4d45'), 0, 3, 0); break;
+    case 'lolly': add(new THREE.CylinderGeometry(0.25, 0.25, 5, 5), m('#ffffff'), 0, 2.5, 0); add(new THREE.SphereGeometry(1.8, 8, 6), m(pick(['#ff5fa2', '#7be0e0', '#ffe14d', '#b47bff'])), 0, 5.6, 0); break;
+    case 'gumdrop': add(new THREE.SphereGeometry(2.2, 8, 5, 0, Math.PI * 2, 0, Math.PI / 2), m(pick(['#ff5fa2', '#7be0e0', '#ffe14d', '#9be37b'])), 0, 0, 0); break;
+    case 'cactus': add(new THREE.CylinderGeometry(0.8, 0.9, 5, 6), m('#3f8a4f'), 0, 2.5, 0); add(new THREE.CylinderGeometry(0.45, 0.45, 2.2, 5), m('#3f8a4f'), 1.3, 3.2, 0); add(new THREE.CylinderGeometry(0.45, 0.45, 1.8, 5), m('#3f8a4f'), -1.3, 2.4, 0); break;
+    case 'rock': add(new THREE.DodecahedronGeometry(2 + Math.random() * 1.5, 0), m('#8d8478'), 0, 0.8, 0).scale.y = 0.7; break;
+    case 'pine': add(new THREE.ConeGeometry(2.2, 5, 6), m('#24574a'), 0, 2.5, 0); add(new THREE.ConeGeometry(1.5, 2.2, 6), m('#f4f8fb'), 0, 5.2, 0); break;
+    case 'snowman': add(new THREE.SphereGeometry(1.6, 7, 6), m('#ffffff'), 0, 1.4, 0); add(new THREE.SphereGeometry(1.1, 7, 6), m('#ffffff'), 0, 3.5, 0); add(new THREE.ConeGeometry(0.25, 0.9, 5), m('#f3a712'), 0, 3.5, 1.2).rotation.x = Math.PI / 2; break;
+    case 'tower': { const c = pick(['#35e0ff', '#ff4fd8', '#ffe14d', '#7dff7a']), hh = 4 + Math.random() * 7; add(new THREE.BoxGeometry(3, hh, 3), m('#221a3a'), 0, hh / 2, 0); add(new THREE.BoxGeometry(3.2, 0.4, 3.2), lit(c), 0, hh, 0); add(new THREE.BoxGeometry(3.2, 0.3, 3.2), lit(c), 0, hh * 0.5, 0); break; }
+    case 'palm': add(new THREE.CylinderGeometry(0.35, 0.5, 6, 5), m('#8a6a45'), 0, 3, 0).rotation.z = 0.15; for (let i = 0; i < 5; i++) { const l = add(new THREE.ConeGeometry(0.7, 3.6, 4), m('#2f9a55'), Math.cos(i * 1.26) * 1.5 - 0.4, 6, Math.sin(i * 1.26) * 1.5); l.rotation.z = Math.cos(i * 1.26) * -1.1; l.rotation.x = Math.sin(i * 1.26) * 1.1; } break;
+    case 'bush': add(new THREE.IcosahedronGeometry(2, 0), m('#2d7a3f'), 0, 1.2, 0); break;
+    case 'islet': { add(new THREE.CylinderGeometry(4, 5, 0.8, 9), m('#e2cf9a'), 0, 0.3, 0); const p = makeProp('palm'); p.position.set(0.5, 0.5, 0); g.add(p); break; }
+    case 'lighthouse': add(new THREE.CylinderGeometry(3.5, 4.5, 1, 8), m('#8d8478'), 0, 0.4, 0); add(new THREE.CylinderGeometry(1.2, 1.8, 8, 8), m('#f6ead2'), 0, 4.8, 0); add(new THREE.CylinderGeometry(1.5, 1.5, 1.2, 8), lit('#ffe9a8'), 0, 9.4, 0); add(new THREE.ConeGeometry(1.8, 1.6, 8), m('#d9482b'), 0, 10.8, 0); break;
+    case 'lily': add(new THREE.CylinderGeometry(2.4, 2.4, 0.15, 9), m('#5fae5a'), 0, 0.1, 0); add(new THREE.SphereGeometry(0.5, 6, 5), m('#f7b6d2'), 0.6, 0.5, 0.3); break;
+    case 'stump': add(new THREE.CylinderGeometry(0.6, 1.1, 5, 5), m('#4a3d2e'), 0, 2.5, 0).rotation.z = 0.2; add(new THREE.CylinderGeometry(0.2, 0.3, 2.5, 4), m('#4a3d2e'), 1, 3.6, 0).rotation.z = -0.9; break;
+    case 'iceberg': add(new THREE.ConeGeometry(3 + Math.random() * 2, 4 + Math.random() * 4, 5), m('#f1f8fc'), 0, 2, 0); add(new THREE.ConeGeometry(2, 3, 4), m('#cfe8f5'), 2.2, 1.3, 1); break;
+    case 'lava': add(new THREE.ConeGeometry(4, 5, 7), m('#2b2228'), 0, 2.2, 0); add(new THREE.CylinderGeometry(1.3, 1.6, 0.5, 7), lit('#ff6a1f'), 0, 4.6, 0); break;
+  }
+  return g;
+}
+
 const N = 360;            // samples along the track centre line
 const LAPS = 3;
 const RADIUS = 1.8;
@@ -44,8 +92,8 @@ const ITEM_LABEL: Record<Item, string> = { boost: '🚀 BOOST!', oil: '🛢️ D
 
 // Karts grip and turn sharply; boats keep sliding the way they were going.
 const PROFILE = {
-  kart: { vmax: 24, accel: 15, turn: 2.5, grip: 14, width: 11, offroad: 9, bg: '#33224f', ground: '#2f6b5e', road: '#4a3b5c', edge: '#f6ead2' },
-  boat: { vmax: 23, accel: 9, turn: 2.0, grip: 2.4, width: 14, offroad: 11, bg: '#33224f', ground: '#1c6a8a', road: '#2580a2', edge: '#2580a2' },
+  kart: { vmax: 24, accel: 15, turn: 2.5, grip: 14, width: 11, offroad: 9 },
+  boat: { vmax: 23, accel: 9, turn: 2.0, grip: 2.4, width: 21, offroad: 11 },
 };
 
 interface Racer {
@@ -56,16 +104,16 @@ interface Racer {
 
 export async function runRace(ctx: Ctx, cfg: RaceConfig): Promise<Score[]> {
   const boat = cfg.kind === 'boat', pr = PROFILE[cfg.kind], WIDTH = pr.width;
-  const course = await chooseCourse(ctx, cfg.kind);
+  const course = await chooseCourse(ctx, cfg.kind), th = course.theme;
 
   // ---------- scene ----------
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(pr.bg);
+  scene.background = new THREE.Color(th.sky);
   const cam = new THREE.PerspectiveCamera(38, 16 / 9, 1, 600);
-  scene.add(new THREE.AmbientLight('#ffe1c4', 1.5));
-  const sun = new THREE.DirectionalLight('#ffb37a', 1.6); sun.position.set(-40, 80, 30); scene.add(sun);
+  scene.add(new THREE.AmbientLight(th.light ?? '#ffe1c4', 1.5));
+  const sun = new THREE.DirectionalLight(th.light ?? '#ffb37a', 1.6); sun.position.set(-40, 80, 30); scene.add(sun);
   const overlay = h('div.kart-overlay');
   const board = h('div.kart-board');
   ctx.show(renderer.domElement, board, overlay);
@@ -87,31 +135,26 @@ export async function runRace(ctx: Ctx, cfg: RaceConfig): Promise<Score[]> {
     g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
     scene.add(new THREE.Mesh(g, new THREE.MeshLambertMaterial({ color, side: THREE.DoubleSide })));
   };
-  const ground = new THREE.Mesh(new THREE.PlaneGeometry(600, 400), mat(pr.ground)); ground.rotation.x = -Math.PI / 2; ground.position.y = -0.1; scene.add(ground);
-  if (!boat) ribbon(WIDTH / 2 + 0.9, 0, pr.edge);     // painted edge
-  ribbon(WIDTH / 2, 0.05, pr.road);        // tarmac / water
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(600, 400), mat(th.ground)); ground.rotation.x = -Math.PI / 2; ground.position.y = -0.1; scene.add(ground);
+  if (!boat) ribbon(WIDTH / 2 + 0.9, 0, th.edge);     // painted edge
+  ribbon(WIDTH / 2, 0.05, th.road);        // tarmac / water
   const line = new THREE.Mesh(new THREE.BoxGeometry(WIDTH, 0.05, 1.2), mat('#f6ead2'));
   line.position.set(S[0].x, 0.1, S[0].z); line.rotation.y = Math.atan2(T[0].x, T[0].z); scene.add(line);
   // scenery, kept off the course
   const clear = (x: number, z: number) => S.every((s) => (s.x - x) ** 2 + (s.z - z) ** 2 > (WIDTH / 2 + 7) ** 2);
   if (boat) {
     // Open water: the course is marked by pairs of buoys, red on the left, green on the right.
-    const bGeo = new THREE.CylinderGeometry(0.5, 0.8, 1.5, 6), red = mat('#e4572e'), green = mat('#7bd67b');
-    for (let i = 0; i < N; i += 9) for (const side of [1, -1]) {
+    const bGeo = new THREE.CylinderGeometry(0.6, 0.9, 1.7, 6), red = mat('#e4572e'), green = mat('#7bd67b');
+    for (let i = 0; i < N; i += 18) for (const side of [1, -1]) {
       const s = at(i, side * (WIDTH / 2 + 0.6)), b = new THREE.Mesh(bGeo, side > 0 ? red : green);
-      b.position.set(s.x, 0.7, s.z); scene.add(b);
+      b.position.set(s.x, 0.8, s.z); scene.add(b);
     }
-    for (let i = 0; i < 9; i++) {      // a handful of small rocky islets, well away from the racing
-      const x = rand(160) - 80, z = rand(90) - 45;
-      if (!clear(x, z)) continue;
-      const m = new THREE.Mesh(new THREE.DodecahedronGeometry(2 + Math.random() * 2, 0), mat('#8d8478')); m.position.set(x, 0.6, z); m.scale.y = 0.6; scene.add(m);
-    }
-  } else for (let i = 0; i < 70; i++) {
-    const x = rand(170) - 85, z = rand(100) - 50;
+  }
+  for (let i = 0; i < (boat ? 26 : 75); i++) {
+    const x = rand(176) - 88, z = rand(104) - 52;
     if (!clear(x, z)) continue;
-    const big = i % 4 === 0;
-    const m = new THREE.Mesh(new THREE.ConeGeometry(big ? 4 : 2, big ? 5 : 6, big ? 8 : 5), mat(big ? pick(['#d9482b', '#e8b23a', '#f6ead2']) : '#1f4d45'));
-    m.position.set(x, big ? 2.5 : 3, z); scene.add(m);
+    const prop = makeProp(th.props[i % th.props.length]);
+    prop.position.set(x, 0, z); prop.rotation.y = Math.random() * 6; scene.add(prop);
   }
 
   const fit = () => {
@@ -166,10 +209,10 @@ export async function runRace(ctx: Ctx, cfg: RaceConfig): Promise<Score[]> {
     return g;
   };
   const racers: Racer[] = ctx.players.map((p, i) => {
-    const row = Math.floor(i / 3), col = (i % 3) - 1, idx = (N - 5 - row * 5) % N, s = at(idx, col * 3.2);
+    const per = boat ? 4 : 3, row = Math.floor(i / per), col = (i % per) - (per - 1) / 2, idx = (N - 5 - row * 5) % N, s = at(idx, col * (boat ? 4.4 : 3.2));
     return {
       p, mesh: build(p), x: s.x, z: s.z, th: Math.atan2(T[idx].x, T[idx].z), vx: 0, vz: 0, steer: 0,
-      idx, lap: -1, item: null, boost: 0, spin: 0, slow: 0, cool: 2, immune: 0, finish: null, off: false, ai: p.bot, skill: 0.84 + Math.random() * 0.14, lane: col * 2.5, useAt: 0, liveText: '', btnText: '',
+      idx, lap: -1, item: null, boost: 0, spin: 0, slow: 0, cool: 2, immune: 0, finish: null, off: false, ai: p.bot, skill: [0.7, 0.84, 0.97][ctx.botLevel] + Math.random() * [0.12, 0.14, 0.08][ctx.botLevel], lane: col * 2.5, useAt: 0, liveText: '', btnText: '',
     };
   });
   const racerOf = new Map(racers.map((k) => [k.p.id, k]));
@@ -193,18 +236,18 @@ export async function runRace(ctx: Ctx, cfg: RaceConfig): Promise<Score[]> {
       const m = new THREE.Mesh(new THREE.BoxGeometry(WIDTH, 0.5, 1.6), mat('#e9f6f7', 0.85));
       m.position.set(S[i].x, 0.3, S[i].z); m.rotation.y = Math.atan2(T[i].x, T[i].z); scene.add(m); waves.push({ i, m });
     }
-    for (const [i, off] of [[95, 2.5], [200, -2.5], [280, 2]]) {   // whirlpools: spin you round, then fling you out
+    for (const [i, off] of [[95, 4], [200, -4.5], [280, 3.5]]) {   // whirlpools: spin you round, then fling you out
       const s = at(i, off), m = new THREE.Mesh(new THREE.CylinderGeometry(4, 2.4, 0.4, 7), mat('#12425c'));
       m.position.set(s.x, 0.15, s.z); scene.add(m); pools.push({ ...s, m });
     }
     for (const [from, dir] of [[20, 1], [165, -1], [255, 1]]) {    // currents: a sideways shove along a stretch of water
       currents.push({ from, to: from + 22, dir });
-      for (let i = from; i < from + 22; i += 4) for (const off of [-3.5, 0, 3.5]) {
+      for (let i = from; i < from + 22; i += 4) for (const off of [-6.5, -2.2, 2.2, 6.5]) {
         const s = at(i, off), a = new THREE.Mesh(new THREE.ConeGeometry(0.7, 2, 3), mat('#9fe0ee', 0.8));
         a.position.set(s.x, 0.2, s.z); a.rotation.x = Math.PI / 2; a.rotation.z = -Math.atan2(NRM[i].x * dir, NRM[i].z * dir); a.scale.y = 1; scene.add(a);
       }
     }
-    for (const [i, off] of [[70, -3], [75, 3.5], [120, 0], [185, 3.5], [240, -3.5], [300, -1], [340, 3]]) {   // rocks in the channel: solid
+    for (const [i, off] of [[70, -5], [75, 6], [120, 0], [150, -7], [185, 6], [240, -6], [265, 2], [300, -2], [340, 5.5]]) {   // rocks in the channel: solid
       const s = at(i, off); buoys.push(s);
       const r = new THREE.Mesh(new THREE.DodecahedronGeometry(1.5, 0), mat('#6f675d')); r.position.set(s.x, 0.5, s.z); scene.add(r);
     }
@@ -242,9 +285,9 @@ export async function runRace(ctx: Ctx, cfg: RaceConfig): Promise<Score[]> {
     const ai = k.ai || !k.p.connected;
     if (ai || k.finish != null) {       // bots (and finishers on their victory lap) follow the racing line
       const tgt = (k.idx + (boat ? 17 : 13)) % N;
-      k.lane += (Math.random() - 0.5) * dt * 3; k.lane = clamp(k.lane, -3.5, 3.5);
+      k.lane += (Math.random() - 0.5) * dt * 3; k.lane = clamp(k.lane, -WIDTH * 0.32, WIDTH * 0.32);
       const s = at(tgt, k.lane);
-      k.steer = clamp(-wrap(Math.atan2(s.x - k.x, s.z - k.z) - k.th) * 2.5, -1, 1);
+      k.steer = clamp(-wrap(Math.atan2(s.x - k.x, s.z - k.z) - k.th) * [1.6, 2.5, 3][ctx.botLevel], -1, 1);
       if (ai && clock > k.useAt && (boat ? k.cool <= 0 : k.item)) { use(k); k.useAt = clock + 1 + Math.random() * 5; }
     }
     // nearest centre-line sample, searched near the last one

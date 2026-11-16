@@ -8,7 +8,12 @@ const CAP = 900;        // rubbing faster than this many px/s gains nothing…
 const FRANTIC = 1500;   // …and faster than this makes the snail drowsy
 
 export const snail: GameDef = {
-  meta: { id: 'snail', name: 'Snail Sprint', emoji: '🐌', zone: 'Speedway', blurb: 'Rub to crawl. Stay calm: frantic snails fall asleep.', min: 2, max: 12 },
+  meta: { id: 'snail', name: 'Snail Sprint', emoji: '🐌', zone: 'Speedway', blurb: 'Rub to crawl. Stay calm: frantic snails fall asleep.', min: 2, max: 12,
+    howTo: [
+      "🐌 RUB your screen to crawl.",
+      "🥱 Smooth and steady wins. Frantic rubbing (or shaking the phone) sends your snail to sleep.",
+      "👀 When the gardener turns round, FREEZE. Moving snails get flicked back.",
+    ] },
   async run(ctx: Ctx) {
     const gardener = h('div.snail-gardener', '🧑‍🌾');
     const banner = h('div.snail-banner', 'Get ready…');
@@ -17,7 +22,7 @@ export const snail: GameDef = {
       const zz = h('span.snail-zz');
       const el = h('div.snail', h('span.snail-body', '🐌'), zz);
       lanes.append(h('div.snail-lane', h('span.badge.snail-name', { style: { background: p.color } }, `${p.shape} ${p.name}`), h('div.snail-track', { style: { borderColor: p.color } }, el, h('span.snail-flag', '🏁'))));
-      return { p, pos: 0, rate: 0, drowsy: 0, asleep: 0, moved: 0, finish: null, el, zz, info: '', botRate: 450 + Math.random() * 500, botWise: Math.random() };
+      return { p, pos: 0, rate: 0, drowsy: 0, asleep: 0, moved: 0, finish: null, el, zz, info: '', botRate: [300, 450, 650][ctx.botLevel] + Math.random() * [400, 500, 250][ctx.botLevel], botWise: Math.min(0.99, Math.random() + [-0.15, 0, 0.3][ctx.botLevel]) };
     });
     const by = new Map(snails.map((s) => [s.p.id, s]));
     ctx.show(h('div.snail-stage', h('div.snail-top', gardener, banner), lanes));

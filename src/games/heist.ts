@@ -85,7 +85,13 @@ function doors(): Puzzle {
 }
 
 export const heist: GameDef = {
-  meta: { id: 'heist', name: 'Heist Crew', emoji: '💰', zone: 'Haunted Manor', blurb: 'Work together. Everyone holds a different piece of the plan. TALK!', min: 2, max: 12 },
+  meta: { id: 'heist', name: 'Heist Crew', emoji: '💰', zone: 'Haunted Manor', blurb: 'Work together. Everyone holds a different piece of the plan. TALK!', min: 2, max: 12,
+    howTo: [
+      "🤝 You’re one team. Crack four locks before the clock runs out.",
+      "🎛️ One player is at the controls. Everyone else has the instructions, split between their phones.",
+      "📣 Nobody can solve it alone: READ YOUR CLUES OUT LOUD.",
+      "🚨 Every mistake costs 15 seconds.",
+    ] },
   async run(ctx: Ctx) {
     const P = shuffle(ctx.players);
     const puzzles = shuffle([wires, keypad, symbols, doors]).map((f) => f());

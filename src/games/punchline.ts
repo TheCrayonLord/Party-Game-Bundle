@@ -4,7 +4,13 @@ import type { View } from '../core/types';
 import { PUNCHLINE_PROMPTS } from './content/punchline';
 
 export const punchline: GameDef = {
-  meta: { id: 'punchline', name: 'Punchline Duel', emoji: '🎭', zone: 'Midway', blurb: 'Two answers enter. The room picks the funnier one.', min: 3, max: 12 },
+  meta: { id: 'punchline', name: 'Punchline Duel', emoji: '🎭', zone: 'Midway', blurb: 'Two answers enter. The room picks the funnier one.', min: 3, max: 12,
+    howTo: [
+      "🎭 Answer the prompts on your phone. Be funny.",
+      "🥊 Each prompt goes to two players. Everyone else votes for the funnier answer.",
+      "🧹 Win every vote for a Clean Sweep bonus.",
+      "🎆 Final round: everyone answers the same prompt.",
+    ] },
   async run(ctx: Ctx) {
     const P = shuffle(ctx.players), n = P.length;
     const score = new Map(P.map((p) => [p.id, 0]));

@@ -7,7 +7,13 @@ import { SKETCH_SEEDS } from './content/drawing';
 type Link = { by: Player; kind: 'text'; text: string } | { by: Player; kind: 'draw'; strokes: Stroke[] };
 
 export const sketch: GameDef = {
-  meta: { id: 'sketch', name: 'Sketch & Switch', emoji: '✏️', zone: 'Art Alley', blurb: 'Write it, draw it, guess it, pass it on.', min: 3, max: 12 },
+  meta: { id: 'sketch', name: 'Sketch & Switch', emoji: '✏️', zone: 'Art Alley', blurb: 'Write it, draw it, guess it, pass it on.', min: 3, max: 12,
+    howTo: [
+      "✏️ Everyone writes something to draw.",
+      "🎨 Then you get someone else’s words and draw them.",
+      "💬 Then you get someone else’s drawing and guess what it is. And so on.",
+      "😂 At the end we watch each chain fall apart. Vote for your favourite bits.",
+    ] },
   async run(ctx: Ctx) {
     const P = shuffle(ctx.players), n = P.length;
     const steps = Math.min(n, 6);                         // chains never run longer than six links

@@ -31,6 +31,7 @@ const guests = (await host.$$('.guest')).length;
 
 // Mid-game: start a game, leave, return, and expect the game screen instead of the lobby.
 await phone.click('.opt:has-text("Fib Finder")');
+await phone.click('.opt:has-text("Got it")', { timeout: 15000 }); // dismiss the how-to-play page
 await phone.waitForSelector('textarea', { timeout: 15000 });
 await phone.close();
 phone = await join();

@@ -15,6 +15,10 @@ let room: Room;
 let ctx: Ctx | null = null;
 let mode: 'lobby' | 'game' | 'results' = 'lobby';
 let resultsDone: (() => void) | null = null;
+const explained = new Set<string>();     // games whose how-to-play page has been shown this session
+const BOT_LEVELS = ['Easy', 'Normal', 'Hard'] as const;
+let botLevel = (Number(qs.get('botlevel') ?? (() => { try { return localStorage.getItem('pgb-botlevel'); } catch { return null; } })() ?? 1) || 0) as 0 | 1 | 2;
+if (!(botLevel in BOT_LEVELS)) botLevel = 1;
 
 boot().catch((e) => fatal(String(e?.message || e)));
 
@@ -59,12 +63,13 @@ function lobby() {
   const local = ['localhost', '127.0.0.1'].includes(location.hostname);
   const n = room.players.length;
 
-  const booth = h('div.booth',
-    h('div.marquee', 'ADMIT ONE'),
+  const booth = h('div.booth', h('div.ticket-paper',
+    h('div.marquee', '★ ADMIT ONE ★'),
+    h('div.ticket-sub', 'Scan to enter the park'),
     qrBox,
-    h('div.code-label', 'or go to'),
-    h('div.url', url.replace(/^https?:\/\//, '').replace(/\?.*/, '')),
-    h('div.code', room.net.code),
+    h('div.ticket-stub', h('div.code-label', 'or go to'),
+      h('div.url', url.replace(/^https?:\/\//, '').replace(/\?.*/, '')),
+      h('div.code', room.net.code), h('div.ticket-serial', `No. ${String(Math.abs([...room.net.code].reduce((a, ch) => a * 31 + ch.charCodeAt(0), 7)) % 1000000).padStart(6, '0')} · GOOD FOR ONE NIGHT`))),
     local ? h('div.warn', 'Phones can’t reach “localhost”. Open this page using this computer’s network address instead.') : null,
   );
 
@@ -72,7 +77,8 @@ function lobby() {
     h('h2', n ? `Guests in the park (${n}/${MAX_PLAYERS})` : 'Scan to get your ticket'),
     h('div.guest-grid', ...room.players.map((p) => h('div.guest' + (p.connected ? '' : '.away'), { title: 'Click to remove', onclick: () => room.remove(p), style: { background: p.color } },
       h('div.guest-av', p.avatar), h('div.guest-name', p.name), h('div.guest-meta', `${p.shape} ${p.tickets} 🎟️${p.vip ? ' · host' : ''}${p.bot ? ' · bot' : ''}`)))),
-    h('button.btn.small', { onclick: () => room.addBot(), disabled: n >= MAX_PLAYERS }, '+ Add a bot'),
+    h('div.bot-row', h('button.btn.small', { onclick: () => room.addBot(), disabled: n >= MAX_PLAYERS }, '+ Add a bot'),
+      h('button.btn.small', { title: 'How good the bots are', onclick: () => { botLevel = ((botLevel + 1) % 3) as 0 | 1 | 2; try { localStorage.setItem('pgb-botlevel', String(botLevel)); } catch { /* storage blocked */ } lobby(); } }, `Bot skill: ${BOT_LEVELS[botLevel]}`)),
   );
 
   const zones = [...new Set(GAMES.map((g) => g.meta.zone))];
@@ -100,11 +106,19 @@ async function start(game: GameDef | undefined) {
   mode = 'game';
   const players = [...room.players];
   const c = (ctx = new Ctx(room, app, players, game.meta));
+  c.botLevel = botLevel;
   let result: GameResult | null = null;
   try {
     c.wait(players, game.meta.name, game.meta.blurb, game.meta.emoji);
     c.show(h('div.center.intro', h('div.intro-emoji', game.meta.emoji), h('h1.big', game.meta.name), h('p.sub', game.meta.blurb), say('intro')));
     await c.sleep(3.5);
+    if (!explained.has(game.meta.id) && !qs.get('game')) {      // first time this session: explain the rules
+      explained.add(game.meta.id);
+      c.show(h('div.col.pad.howto', h('h1.big', `${game.meta.emoji} How to play ${game.meta.name}`), h('div.howto-list', ...game.meta.howTo.map((l) => h('div.howto-line', l)))));
+      const key = c.key('howto');
+      c.all({ type: 'info', key, id: 'none', title: `How to play ${game.meta.name}`, lines: game.meta.howTo });
+      await c.next('Got it, let’s play!', 45);
+    }
     result = await game.run(c);
   } catch (e) {
     if (!(e instanceof Cancelled)) { console.error(e); result = null; }

@@ -4,7 +4,13 @@ import { badge, tally, type Ctx, type GameDef } from '../host/ctx';
 import { FAKE_WORDS } from './content/drawing';
 
 export const fakeartist: GameDef = {
-  meta: { id: 'fakeartist', name: 'Fake Artist', emoji: '🎨', zone: 'Art Alley', blurb: 'One drawing, one line each. One of you has no idea what it is.', min: 4, max: 10 },
+  meta: { id: 'fakeartist', name: 'Fake Artist', emoji: '🎨', zone: 'Art Alley', blurb: 'One drawing, one line each. One of you has no idea what it is.', min: 4, max: 10,
+    howTo: [
+      "🤫 Everyone gets the same secret word… except the Fake Artist, who only knows the category.",
+      "🖌️ Take turns adding ONE line to a shared drawing.",
+      "☝️ Then vote for who you think was faking.",
+      "🎯 If the faker is caught, they can still win by guessing the word. So don’t draw it too clearly!",
+    ] },
   async run(ctx: Ctx) {
     const P = ctx.players, n = P.length;
     const score = new Map(P.map((p) => [p.id, 0]));

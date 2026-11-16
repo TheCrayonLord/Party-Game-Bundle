@@ -4,7 +4,13 @@ import type { Player } from '../host/room';
 import { LOCATIONS } from './content/agent';
 
 export const agent: GameDef = {
-  meta: { id: 'agent', name: 'Secret Agent', emoji: '🔮', zone: 'Fortune Tent', blurb: 'Everyone knows where you are. Except the spy.', min: 4, max: 10 },
+  meta: { id: 'agent', name: 'Secret Agent', emoji: '🔮', zone: 'Fortune Tent', blurb: 'Everyone knows where you are. Except the spy.', min: 4, max: 10,
+    howTo: [
+      "📍 Everyone’s phone shows the same location and a role… except the spy’s.",
+      "🗣️ Take turns asking each other questions. Prove you know where you are without giving it away.",
+      "☝️ Think you’ve found the spy? Accuse them (once each). The vote must be unanimous.",
+      "🕵️ Spy: blend in, and stop the game to guess the location whenever you’re ready.",
+    ] },
   async run(ctx: Ctx) {
     const P = ctx.players, n = P.length;
     const options = shuffle(LOCATIONS).slice(0, 12);

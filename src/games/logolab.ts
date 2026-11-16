@@ -4,7 +4,12 @@ import { badge, tally, type Ctx, type GameDef } from '../host/ctx';
 import { BOT_SLOGANS, COMPANIES } from './content/logos';
 
 export const logolab: GameDef = {
-  meta: { id: 'logolab', name: 'Logo Lab', emoji: '🪧', zone: 'Art Alley', blurb: 'Draw a logo for a ridiculous company. Then write someone else’s slogan.', min: 3, max: 12 },
+  meta: { id: 'logolab', name: 'Logo Lab', emoji: '🪧', zone: 'Art Alley', blurb: 'Draw a logo for a ridiculous company. Then write someone else’s slogan.', min: 3, max: 12,
+    howTo: [
+      "🪧 Your phone gives you a ridiculous company. Draw its logo.",
+      "💬 Then you get someone else’s logo and write its slogan.",
+      "🗳️ Vote twice: best logo and best slogan.",
+    ] },
   async run(ctx: Ctx) {
     const P = shuffle(ctx.players), n = P.length;
     const names = shuffle(COMPANIES);

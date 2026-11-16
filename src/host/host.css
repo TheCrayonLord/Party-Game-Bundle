@@ -9,14 +9,30 @@ body.host { font-size: clamp(14px, 1.5vw, 26px); }
 .banner::after { content: ''; display: block; height: 14px; margin-top: .4em; background: radial-gradient(circle, #ffe9a8 0 5px, transparent 6px) 0 0 / 46px 14px repeat-x; filter: drop-shadow(0 0 6px #ffd76a); }
 .lobby-top { display: flex; gap: 1.5em; align-items: flex-start; flex: 1; min-height: 0; }
 .lobby-right { flex: 1; display: flex; flex-direction: column; gap: 1em; min-width: 0; }
-.booth { background: var(--red); border: .3em solid var(--cream); border-radius: 1em 1em .4em .4em; padding: .8em 1em; text-align: center; width: 13.5em; flex: none; box-shadow: 0 .4em 0 rgba(0,0,0,.35); background-image: repeating-linear-gradient(90deg, rgba(255,255,255,.12) 0 1.2em, transparent 1.2em 2.4em); }
-.marquee { font-family: var(--display); background: var(--cream); color: var(--red); border-radius: .4em; padding: .1em; letter-spacing: .3em; font-size: 1.1em; margin-bottom: .5em; }
-.qr { background: #fff; border-radius: .5em; padding: .3em; line-height: 0; }
+/* the admission ticket that carries the QR code */
+.booth { width: 13.5em; flex: none; filter: drop-shadow(0 .4em 0 rgba(0,0,0,.35)); transform: rotate(-1.5deg); }
+.ticket-paper { --stub: 7.4em; --notch: .85em; background: var(--cream); color: var(--ink); padding: .7em .9em .6em; text-align: center; border-radius: .5em; position: relative;
+  background-image: repeating-linear-gradient(90deg, rgba(217,72,43,.07) 0 .5em, transparent .5em 1em);
+  /* half-circle bites out of each side where the stub tears off */
+  -webkit-mask: radial-gradient(circle var(--notch) at left calc(100% - var(--stub)), #0000 98%, #000) left / 51% 100% no-repeat, radial-gradient(circle var(--notch) at right calc(100% - var(--stub)), #0000 98%, #000) right / 51% 100% no-repeat;
+  mask: radial-gradient(circle var(--notch) at left calc(100% - var(--stub)), #0000 98%, #000) left / 51% 100% no-repeat, radial-gradient(circle var(--notch) at right calc(100% - var(--stub)), #0000 98%, #000) right / 51% 100% no-repeat; }
+.ticket-paper::before { content: ''; position: absolute; inset: .35em; border: .12em solid var(--red); border-radius: .3em; pointer-events: none; }
+.marquee { font-family: var(--display); background: var(--red); color: var(--cream); border-radius: .3em; padding: .1em; letter-spacing: .2em; font-size: 1em; margin: .2em .2em 0; }
+.ticket-sub { font-size: .6em; text-transform: uppercase; letter-spacing: .25em; margin: .3em 0; color: var(--red); }
+.qr { background: #fff; border-radius: .3em; padding: .3em; line-height: 0; margin: 0 .2em; border: .1em solid var(--ink); }
 .qr svg { width: 100%; height: auto; }
-.code-label { margin-top: .4em; font-size: .7em; text-transform: uppercase; letter-spacing: .2em; }
-.url { font-size: .75em; word-break: break-all; }
-.code { font-family: var(--display); font-size: 2.6em; letter-spacing: .25em; color: var(--mustard); text-shadow: 0 .06em 0 rgba(0,0,0,.4); }
-.warn { background: var(--mustard); color: var(--ink); border-radius: .4em; padding: .4em; font-size: .65em; margin-top: .4em; }
+.ticket-stub { height: var(--stub); margin-top: .6em; padding-top: .45em; border-top: .16em dashed var(--red); display: flex; flex-direction: column; justify-content: center; }
+.code-label { font-size: .6em; text-transform: uppercase; letter-spacing: .2em; }
+.url { font-size: .62em; word-break: break-all; }
+.code { font-family: var(--display); font-size: 2.5em; letter-spacing: .25em; color: var(--red); line-height: 1.1; margin-right: -.25em; }
+.ticket-serial { font-size: .5em; letter-spacing: .15em; opacity: .7; }
+.warn { background: var(--mustard); color: var(--ink); border-radius: .4em; padding: .4em; font-size: .6em; margin: .4em .3em 0; position: relative; }
+.bot-row { display: flex; gap: .5em; }
+.howto { justify-content: center; }
+.howto .big { font-size: 2.4em; }
+.howto-list { display: flex; flex-direction: column; gap: .5em; max-width: 44em; }
+.howto-line { background: var(--cream); color: var(--ink); border-radius: .7em; border: .15em solid var(--ink); padding: .45em 1em; font-size: 1.35em; text-align: left; animation: slide .4s both; }
+.howto-line:nth-child(2) { animation-delay: .15s; } .howto-line:nth-child(3) { animation-delay: .3s; } .howto-line:nth-child(4) { animation-delay: .45s; }
 .guests { display: flex; flex-direction: column; gap: .6em; align-items: flex-start; }
 .guests h2 { font-size: 1.5em; }
 .guest-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(7em, 1fr)); gap: .6em; width: 100%; }

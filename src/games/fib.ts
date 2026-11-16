@@ -5,7 +5,13 @@ import { FIB_QUESTIONS } from './content/fib';
 const norm = (s: string) => s.toLowerCase().replace(/^(a|an|the)\s+/, '').replace(/[^a-z0-9]/g, '');
 
 export const fib: GameDef = {
-  meta: { id: 'fib', name: 'Fib Finder', emoji: '🤥', zone: 'Midway', blurb: 'Write a convincing lie. Then find the truth.', min: 3, max: 12 },
+  meta: { id: 'fib', name: 'Fib Finder', emoji: '🤥', zone: 'Midway', blurb: 'Write a convincing lie. Then find the truth.', min: 3, max: 12,
+    howTo: [
+      "❓ A weird-but-true trivia question appears with a blank.",
+      "🤥 Write a LIE that sounds like the real answer.",
+      "🔎 Then pick the truth from everyone’s lies.",
+      "💰 1000 for finding the truth. 500 for every player your lie fools.",
+    ] },
   async run(ctx: Ctx) {
     const P = ctx.players;
     const score = new Map(P.map((p) => [p.id, 0]));
@@ -35,7 +41,7 @@ export const fib: GameDef = {
       ctx.show(h('div.col.pad', prompt, h('div.row', ...order.map((o) => h('div.answer', o.text.toUpperCase()))), h('p.sub', 'Which one is TRUE? Vote on your phone.')));
       const vkey = ctx.key('vote');
       const votes = await ctx.collect(P, (p) => ({ type: 'choice', key: vkey, id: vkey, prompt: 'Which is the truth?', sub: q.q, options: order.filter((o) => !o.authors.includes(p.id)).map((o) => ({ id: o.id, label: o.text.toUpperCase() })) }), 30,
-        { bot: (_p, v) => (v.type === 'choice' ? (Math.random() < 0.4 && v.options.some((o) => o.id === 'truth') ? 'truth' : pick(v.options).id) : null) });
+        { bot: (_p, v) => (v.type === 'choice' ? (Math.random() < [0.2, 0.4, 0.65][ctx.botLevel] && v.options.some((o) => o.id === 'truth') ? 'truth' : pick(v.options).id) : null) });
       const t = tally(votes);
 
       // Reveal lies that fooled someone first, the truth last.

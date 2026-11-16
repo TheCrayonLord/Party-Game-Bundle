@@ -4,6 +4,8 @@ import type { Player, Room } from './room';
 
 export interface GameMeta {
   id: string; name: string; emoji: string; zone: string; blurb: string; min: number; max: number;
+  /** Shown on the TV before the first match of this game each session. */
+  howTo: string[];
   /** Players beyond `max` can't play; games with fewer than `min` are closed. */
 }
 export interface Score { id: string; score: number; label?: string; /** Overrides the usual by-placement prize tickets (used by team games). */ tickets?: number }
@@ -41,6 +43,9 @@ export class Ctx {
   private cleanups: (() => void)[] = [];
   private timerStop: (() => void) | null = null;
   private keyN = 0;
+
+  /** How good the bots are: 0 easy, 1 normal, 2 hard. */
+  botLevel: 0 | 1 | 2 = 1;
 
   constructor(private room: Room, root: HTMLElement, public players: Player[], meta: GameMeta) {
     this.hudWait = h('div.hud-wait');

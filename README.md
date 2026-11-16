@@ -39,6 +39,8 @@ The game picks automatically: if the page is served by the relay server it uses 
 | Prize tickets across games | Done (no end-of-night ceremony yet) |
 | WebRTC transport and relay transport | Both work; automatic fall-back from one to the other mid-session is not built yet |
 | Sound | None yet: waiting on a decision about the samples |
+| How-to-play page | Shown before the first match of each game in a session; the host player taps to continue |
+| Bot skill | Easy / Normal / Hard button in the lobby (affects the racing, flying, snail, trivia and ghost-train bots) |
 | Mascot | Gus the Goldfish and Sprocket the Strongman Bear take turns hosting, one per session (emoji stand-ins and speech bubbles for now). Click the mascot in the lobby to swap, or add `?mascot=gus` / `?mascot=sprocket` |
 
 ### Games
@@ -47,10 +49,10 @@ All 14 games from the plan are playable.
 
 | Zone | Game | Players | Notes |
 |---|---|---|---|
-| Speedway | Tilt Kart | 2–12 | 3 courses (host picks), 3 items, 3 laps |
+| Speedway | Tilt Kart | 2–12 | 6 themed tracks (host picks), 3 items, 3 laps |
 | Speedway | Sky Slalom | 2–12 | 22 hoops, gold centres, gusts of wind |
 | Speedway | Snail Sprint | 2–12 | |
-| Lagoon | Riptide Regatta | 2–12 | Shares Tilt Kart's engine. Open water, 3 courses marked by buoys; waves, whirlpools, currents, rocks, swipe to boost |
+| Lagoon | Riptide Regatta | 2–12 | Shares Tilt Kart's engine. Open water, 5 themed courses marked by buoys; waves, whirlpools, currents, rocks, swipe to boost |
 | Art Alley | Sketch & Switch | 3–12 | |
 | Art Alley | Fake Artist | 4–10 | |
 | Art Alley | Draw Your Racer | 2–12 | Draw a kart or boat, vote for best ride, then race it |

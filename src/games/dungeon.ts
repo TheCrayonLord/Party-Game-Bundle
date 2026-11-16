@@ -4,7 +4,13 @@ import type { Player } from '../host/room';
 import { ROOMS } from './content/dungeon';
 
 export const dungeon: GameDef = {
-  meta: { id: 'dungeon', name: 'Dungeon Vote', emoji: '👻', zone: 'Haunted Manor', blurb: 'Vote your way through the ghost train. Someone is steering you wrong.', min: 4, max: 12 },
+  meta: { id: 'dungeon', name: 'Dungeon Vote', emoji: '👻', zone: 'Haunted Manor', blurb: 'Vote your way through the ghost train. Someone is steering you wrong.', min: 4, max: 12,
+    howTo: [
+      "🚂 Ride the ghost train through seven rooms. Each room, vote for one of two ways on.",
+      "😈 One of you is a traitor who knows which way is dangerous.",
+      "🔮 Each room, one loyal passenger gets a gut feeling about the safe way. It’s usually right.",
+      "❤️ Three hits and the cart is wrecked. Argue, accuse, vote.",
+    ] },
   async run(ctx: Ctx) {
     const P = ctx.players, n = P.length;
     const traitors = shuffle(P).slice(0, n >= 9 ? 2 : 1);
@@ -39,7 +45,7 @@ export const dungeon: GameDef = {
       const votes = await ctx.collect(voters, (p) => ({ type: 'choice', key, id: key, prompt: room.text,
         sub: traitors.includes(p) ? `😈 The dangerous way is: “${label(danger)}”. Steer them into it.` : p === scout ? `🔮 Your gut says “${label(gut)}” is SAFE. (Your gut is usually right.) Convince the others!` : 'You have no special feeling about this one. Who do you believe?',
         options: [{ id: 'a', label: room.a }, { id: 'b', label: room.b }] }), 40,
-        { bot: (p) => (traitors.includes(p) ? danger : Math.random() < 0.6 ? safe : danger) });
+        { bot: (p) => (traitors.includes(p) ? danger : Math.random() < [0.45, 0.6, 0.8][ctx.botLevel] ? safe : danger) });
       ctx.wait(exiled.size ? [...exiled] : [], 'You’ve been thrown off the train', 'Watch and heckle.', '🪦');
       const t = tally(votes), a = t.get('a')?.length || 0, b = t.get('b')?.length || 0;
       const chosen = a === b ? pick(['a', 'b']) : a > b ? 'a' : 'b';

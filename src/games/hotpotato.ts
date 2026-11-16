@@ -3,7 +3,13 @@ import { type Ctx, type GameDef } from '../host/ctx';
 import type { Player } from '../host/room';
 
 export const hotpotato: GameDef = {
-  meta: { id: 'hotpotato', name: 'Hot Potato Bomb', emoji: '💣', zone: 'Midway', blurb: 'Hold the bomb to score. Flick it away before it blows.', min: 3, max: 12 },
+  meta: { id: 'hotpotato', name: 'Hot Potato Bomb', emoji: '💣', zone: 'Midway', blurb: 'Hold the bomb to score. Flick it away before it blows.', min: 3, max: 12,
+    howTo: [
+      "💣 One phone has the bomb. Nobody knows how long the fuse is.",
+      "💰 You score points every second you HOLD it.",
+      "👉 FLICK it left or right to pass to a neighbour, or up to throw it across the circle.",
+      "💥 Holding it when it blows? You’re out. Last one standing wins.",
+    ] },
   async run(ctx: Ctx) {
     const P = ctx.players;
     const score = new Map(P.map((p) => [p.id, 0]));

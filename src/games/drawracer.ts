@@ -4,7 +4,12 @@ import { badge, tally, type Ctx, type GameDef } from '../host/ctx';
 import { runRace } from './racing';
 
 export const drawracer: GameDef = {
-  meta: { id: 'drawracer', name: 'Draw Your Racer', emoji: '🖍️', zone: 'Art Alley', blurb: 'Draw your own vehicle, then race it.', min: 2, max: 12 },
+  meta: { id: 'drawracer', name: 'Draw Your Racer', emoji: '🖍️', zone: 'Art Alley', blurb: 'Draw your own vehicle, then race it.', min: 2, max: 12,
+    howTo: [
+      "🖍️ Draw your vehicle as seen from above, with the FRONT at the TOP of your screen.",
+      "🏆 Vote for the best ride: the winner gets a bonus.",
+      "🏁 Then race them! Tilt to steer.",
+    ] },
   async run(ctx: Ctx) {
     const P = ctx.players;
     // The host player chooses land or water.

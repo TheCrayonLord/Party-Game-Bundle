@@ -9,7 +9,13 @@ const XR = 17, YLO = 2, YHI = 19;        // the box the planes fly in
 interface Plane { p: Player; mesh: THREE.Group; x: number; y: number; vx: number; vy: number; tx: number; ty: number; score: number; streak: number; aimX: number; aimY: number; live: string }
 
 export const skyslalom: GameDef = {
-  meta: { id: 'skyslalom', name: 'Sky Slalom', emoji: '🛩️', zone: 'Speedway', blurb: 'Paper planes over the park. Tilt to bank, dive and climb through the hoops.', min: 2, max: 12 },
+  meta: { id: 'skyslalom', name: 'Sky Slalom', emoji: '🛩️', zone: 'Speedway', blurb: 'Paper planes over the park. Tilt to bank, dive and climb through the hoops.', min: 2, max: 12,
+    howTo: [
+      "🛩️ TILT left and right to bank. Tip the phone back to climb, forward to dive.",
+      "⭕ Fly through the hoops as they arrive: 100 points each.",
+      "🟡 Thread the small gold ring in the middle for 250.",
+      "🔥 Don’t miss: every hoop in a row is worth more.",
+    ] },
   async run(ctx: Ctx) {
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
@@ -87,7 +93,8 @@ export const skyslalom: GameDef = {
 
         for (const pl of planes) {
           if (pl.p.bot || !pl.p.connected) {    // bots aim for the next hoop, not always well
-            if (next && Math.random() < dt * 1.5) { pl.aimX = next.x + (Math.random() - 0.5) * 7; pl.aimY = next.y + (Math.random() - 0.5) * 6; }
+            const slop = [13, 7, 3][ctx.botLevel];
+            if (next && Math.random() < dt * 1.5) { pl.aimX = next.x + (Math.random() - 0.5) * slop; pl.aimY = next.y + (Math.random() - 0.5) * slop; }
             pl.tx = clamp((pl.aimX - pl.x) * 0.35, -1, 1); pl.ty = clamp((pl.aimY - pl.y) * 0.35, -1, 1);
           }
           if (clock > 0) {
