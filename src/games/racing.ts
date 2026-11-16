@@ -11,10 +11,31 @@ export interface RaceConfig {
   skins?: Map<string, Stroke[]>;
 }
 
-const TRACKS: [number, number][][] = [
-  [[-60, -20], [-40, -34], [0, -30], [30, -36], [58, -22], [62, 4], [44, 22], [18, 14], [0, 28], [-30, 32], [-56, 20], [-66, 0]],
-  [[-62, 0], [-50, -28], [-20, -34], [0, -14], [22, -32], [54, -28], [64, -4], [50, 22], [20, 30], [-8, 16], [-34, 32], [-58, 22]],
-];
+/** Lets the host player choose the course from their phone; falls back to a random one. */
+async function chooseCourse(ctx: Ctx, kind: 'kart' | 'boat'): Promise<Course> {
+  const list = COURSES[kind], vip = ctx.vip && ctx.players.includes(ctx.vip) && !ctx.vip.bot ? ctx.vip : null;
+  if (!vip) return pick(list);
+  ctx.show(h('div.col.pad', h('h1.big', 'Pick a course'), h('div.row', ...list.map((c) => h('div.answer', c.name))), h('p.sub', `${vip.name} is choosing…`)));
+  ctx.wait(ctx.players.filter((p) => p !== vip));
+  const key = ctx.key('course');
+  const v = (await ctx.collect([vip], () => ({ type: 'choice', key, id: key, prompt: 'Pick a course', options: [...list.map((c, i) => ({ id: String(i), label: c.name })), { id: 'r', label: '🎲 Surprise me' }] }), 15)).get(vip.id);
+  return list[Number(v)] ?? pick(list);
+}
+
+interface Course { name: string; pts: [number, number][] }
+/** Three courses per kind of race. The host player picks one (or leaves it to chance) before each race. */
+export const COURSES: Record<'kart' | 'boat', Course[]> = {
+  kart: [
+    { name: 'Big Top Loop', pts: [[-60, -20], [-40, -34], [0, -30], [30, -36], [58, -22], [62, 4], [44, 22], [18, 14], [0, 28], [-30, 32], [-56, 20], [-66, 0]] },
+    { name: 'Pretzel Bend', pts: [[-62, 0], [-50, -28], [-20, -34], [0, -14], [22, -32], [54, -28], [64, -4], [50, 22], [20, 30], [-8, 16], [-34, 32], [-58, 22]] },
+    { name: 'Hourglass Speedway', pts: [[-66, -26], [-24, -20], [18, -32], [60, -26], [68, 2], [60, 30], [22, 22], [-18, 32], [-58, 30], [-68, 2]] },
+  ],
+  boat: [
+    { name: 'Lazy Lagoon', pts: [[-62, -8], [-46, -30], [-10, -36], [26, -32], [58, -24], [68, 2], [54, 28], [20, 34], [-16, 32], [-48, 28], [-68, 10]] },
+    { name: 'Kidney Cove', pts: [[-64, -14], [-38, -34], [0, -22], [36, -36], [64, -16], [62, 14], [38, 34], [8, 16], [-22, 34], [-54, 28], [-70, 6]] },
+    { name: 'Serpent Strait', pts: [[-66, -16], [-34, -34], [6, -30], [30, -14], [54, -28], [68, -2], [56, 26], [22, 34], [-6, 20], [-32, 34], [-60, 26], [-70, 4]] },
+  ],
+};
 const N = 360;            // samples along the track centre line
 const LAPS = 3;
 const RADIUS = 1.8;
@@ -24,17 +45,18 @@ const ITEM_LABEL: Record<Item, string> = { boost: '🚀 BOOST!', oil: '🛢️ D
 // Karts grip and turn sharply; boats keep sliding the way they were going.
 const PROFILE = {
   kart: { vmax: 24, accel: 15, turn: 2.5, grip: 14, width: 11, offroad: 9, bg: '#33224f', ground: '#2f6b5e', road: '#4a3b5c', edge: '#f6ead2' },
-  boat: { vmax: 23, accel: 9, turn: 2.0, grip: 2.4, width: 13, offroad: 7, bg: '#33224f', ground: '#d9c48f', road: '#2b86a8', edge: '#e9f6f7' },
+  boat: { vmax: 23, accel: 9, turn: 2.0, grip: 2.4, width: 14, offroad: 11, bg: '#33224f', ground: '#1c6a8a', road: '#2580a2', edge: '#2580a2' },
 };
 
 interface Racer {
   p: Player; mesh: THREE.Group; x: number; z: number; th: number; vx: number; vz: number; steer: number;
   idx: number; lap: number; item: Item | null; boost: number; spin: number; slow: number; cool: number; immune: number;
-  finish: number | null; ai: boolean; skill: number; lane: number; useAt: number; liveText: string; btnText: string;
+  finish: number | null; off: boolean; ai: boolean; skill: number; lane: number; useAt: number; liveText: string; btnText: string;
 }
 
 export async function runRace(ctx: Ctx, cfg: RaceConfig): Promise<Score[]> {
   const boat = cfg.kind === 'boat', pr = PROFILE[cfg.kind], WIDTH = pr.width;
+  const course = await chooseCourse(ctx, cfg.kind);
 
   // ---------- scene ----------
   const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -50,7 +72,7 @@ export async function runRace(ctx: Ctx, cfg: RaceConfig): Promise<Score[]> {
   renderer.domElement.style.cssText = 'display:block;width:100%;height:100%';
   ctx.onEnd(() => { renderer.dispose(); scene.traverse((o: any) => { o.geometry?.dispose?.(); o.material?.map?.dispose?.(); o.material?.dispose?.(); }); });
 
-  const curve = new THREE.CatmullRomCurve3(pick(TRACKS).map(([x, z]) => new THREE.Vector3(x, 0, z)), true, 'catmullrom', 0.5);
+  const curve = new THREE.CatmullRomCurve3(course.pts.map(([x, z]) => new THREE.Vector3(x, 0, z)), true, 'catmullrom', 0.5);
   const S = curve.getSpacedPoints(N).slice(0, N);                 // centre line
   const T = S.map((_, i) => curve.getTangentAt(i / N).setY(0).normalize());
   const NRM = T.map((t) => new THREE.Vector3(-t.z, 0, t.x));      // points to the left of travel
@@ -66,26 +88,36 @@ export async function runRace(ctx: Ctx, cfg: RaceConfig): Promise<Score[]> {
     scene.add(new THREE.Mesh(g, new THREE.MeshLambertMaterial({ color, side: THREE.DoubleSide })));
   };
   const ground = new THREE.Mesh(new THREE.PlaneGeometry(600, 400), mat(pr.ground)); ground.rotation.x = -Math.PI / 2; ground.position.y = -0.1; scene.add(ground);
-  ribbon(WIDTH / 2 + 0.9, 0, pr.edge);     // painted edge / foam
+  if (!boat) ribbon(WIDTH / 2 + 0.9, 0, pr.edge);     // painted edge
   ribbon(WIDTH / 2, 0.05, pr.road);        // tarmac / water
   const line = new THREE.Mesh(new THREE.BoxGeometry(WIDTH, 0.05, 1.2), mat('#f6ead2'));
   line.position.set(S[0].x, 0.1, S[0].z); line.rotation.y = Math.atan2(T[0].x, T[0].z); scene.add(line);
   // scenery, kept off the course
-  const clear = (x: number, z: number) => S.every((s) => (s.x - x) ** 2 + (s.z - z) ** 2 > (WIDTH / 2 + 5) ** 2);
-  for (let i = 0; i < 70; i++) {
+  const clear = (x: number, z: number) => S.every((s) => (s.x - x) ** 2 + (s.z - z) ** 2 > (WIDTH / 2 + 7) ** 2);
+  if (boat) {
+    // Open water: the course is marked by pairs of buoys, red on the left, green on the right.
+    const bGeo = new THREE.CylinderGeometry(0.5, 0.8, 1.5, 6), red = mat('#e4572e'), green = mat('#7bd67b');
+    for (let i = 0; i < N; i += 9) for (const side of [1, -1]) {
+      const s = at(i, side * (WIDTH / 2 + 0.6)), b = new THREE.Mesh(bGeo, side > 0 ? red : green);
+      b.position.set(s.x, 0.7, s.z); scene.add(b);
+    }
+    for (let i = 0; i < 9; i++) {      // a handful of small rocky islets, well away from the racing
+      const x = rand(160) - 80, z = rand(90) - 45;
+      if (!clear(x, z)) continue;
+      const m = new THREE.Mesh(new THREE.DodecahedronGeometry(2 + Math.random() * 2, 0), mat('#8d8478')); m.position.set(x, 0.6, z); m.scale.y = 0.6; scene.add(m);
+    }
+  } else for (let i = 0; i < 70; i++) {
     const x = rand(170) - 85, z = rand(100) - 50;
     if (!clear(x, z)) continue;
     const big = i % 4 === 0;
-    const m = boat
-      ? new THREE.Mesh(big ? new THREE.DodecahedronGeometry(3, 0) : new THREE.ConeGeometry(2.4, 5, 6), mat(big ? '#8d8478' : '#3b7d4f'))
-      : new THREE.Mesh(new THREE.ConeGeometry(big ? 4 : 2, big ? 5 : 6, big ? 8 : 5), mat(big ? pick(['#d9482b', '#e8b23a', '#f6ead2']) : '#1f4d45'));
-    m.position.set(x, big ? 2 : 3, z); scene.add(m);
+    const m = new THREE.Mesh(new THREE.ConeGeometry(big ? 4 : 2, big ? 5 : 6, big ? 8 : 5), mat(big ? pick(['#d9482b', '#e8b23a', '#f6ead2']) : '#1f4d45'));
+    m.position.set(x, big ? 2.5 : 3, z); scene.add(m);
   }
 
   const fit = () => {
     const w = ctx.stage.clientWidth || 1280, hh = ctx.stage.clientHeight || 680;
     renderer.setSize(w, hh, false); cam.aspect = w / hh; cam.updateProjectionMatrix();
-    const corners = [[-76, -46], [76, -46], [-76, 46], [76, 46]].map(([x, z]) => new THREE.Vector3(x, 0, z));
+    const corners = [[-80, -46], [80, -46], [-80, 46], [80, 46]].map(([x, z]) => new THREE.Vector3(x, 0, z));
     for (let d = 80; d < 400; d += 5) {      // back the camera off until the whole course is in view
       cam.position.set(0, d * 0.86, d * 0.5); cam.lookAt(0, 0, 3); cam.updateMatrixWorld();
       if (corners.every((c) => { const v = c.clone().project(cam); return Math.abs(v.x) < 0.94 && Math.abs(v.y) < 0.9; })) break;
@@ -137,7 +169,7 @@ export async function runRace(ctx: Ctx, cfg: RaceConfig): Promise<Score[]> {
     const row = Math.floor(i / 3), col = (i % 3) - 1, idx = (N - 5 - row * 5) % N, s = at(idx, col * 3.2);
     return {
       p, mesh: build(p), x: s.x, z: s.z, th: Math.atan2(T[idx].x, T[idx].z), vx: 0, vz: 0, steer: 0,
-      idx, lap: -1, item: null, boost: 0, spin: 0, slow: 0, cool: 2, immune: 0, finish: null, ai: p.bot, skill: 0.84 + Math.random() * 0.14, lane: col * 2.5, useAt: 0, liveText: '', btnText: '',
+      idx, lap: -1, item: null, boost: 0, spin: 0, slow: 0, cool: 2, immune: 0, finish: null, off: false, ai: p.bot, skill: 0.84 + Math.random() * 0.14, lane: col * 2.5, useAt: 0, liveText: '', btnText: '',
     };
   });
   const racerOf = new Map(racers.map((k) => [k.p.id, k]));
@@ -172,11 +204,9 @@ export async function runRace(ctx: Ctx, cfg: RaceConfig): Promise<Score[]> {
         a.position.set(s.x, 0.2, s.z); a.rotation.x = Math.PI / 2; a.rotation.z = -Math.atan2(NRM[i].x * dir, NRM[i].z * dir); a.scale.y = 1; scene.add(a);
       }
     }
-    for (const [i, off] of [[70, -3], [75, 3.5], [120, 0], [185, 3.5], [240, -3.5], [300, -1], [340, 3]]) {   // buoys: solid
+    for (const [i, off] of [[70, -3], [75, 3.5], [120, 0], [185, 3.5], [240, -3.5], [300, -1], [340, 3]]) {   // rocks in the channel: solid
       const s = at(i, off); buoys.push(s);
-      const b = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 1.2, 1.6, 8), mat('#d9482b')); b.position.set(s.x, 0.8, s.z);
-      const top = new THREE.Mesh(new THREE.SphereGeometry(0.6, 6, 5), mat('#f6ead2')); top.position.set(s.x, 1.9, s.z);
-      scene.add(b, top);
+      const r = new THREE.Mesh(new THREE.DodecahedronGeometry(1.5, 0), mat('#6f675d')); r.position.set(s.x, 0.5, s.z); scene.add(r);
     }
   }
 
@@ -205,7 +235,7 @@ export async function runRace(ctx: Ctx, cfg: RaceConfig): Promise<Score[]> {
   });
 
   // ---------- race ----------
-  let clock = -3.6, firstFinish: number | null = null, lastHud = 0;
+  let clock = -4.6, firstFinish: number | null = null, lastHud = 0;
   const wrap = (a: number) => Math.atan2(Math.sin(a), Math.cos(a));
 
   const step = (k: Racer, dt: number, place: number) => {
@@ -223,6 +253,7 @@ export async function runRace(ctx: Ctx, cfg: RaceConfig): Promise<Score[]> {
     if (k.idx > N * 0.75 && best < N * 0.25) k.lap++; else if (k.idx < N * 0.25 && best > N * 0.75) k.lap--;
     const crossed = (i: number) => (best - i + N) % N < 30 && (k.idx - i + N) % N > N - 30;   // passed sample i this frame
     const dist = Math.sqrt(bd), off = dist > WIDTH / 2 + 0.5;
+    k.off = off;
     if (k.lap >= LAPS && k.finish == null) { k.finish = clock; firstFinish ??= clock; }
 
     const fx = Math.sin(k.th), fz = Math.cos(k.th);
@@ -252,7 +283,7 @@ export async function runRace(ctx: Ctx, cfg: RaceConfig): Promise<Score[]> {
       k.th -= k.steer * pr.turn * dt * clamp(Math.abs(vf) / 8, 0, 1);
     }
     k.x += k.vx * dt; k.z += k.vz * dt;
-    const lim = WIDTH / 2 + 6;        // invisible fence beside the verge
+    const lim = WIDTH / 2 + (boat ? 9 : 6);        // invisible fence beside the verge
     if (dist > lim) { const s = S[k.idx]; k.x = s.x + ((k.x - s.x) / dist) * lim; k.z = s.z + ((k.z - s.z) / dist) * lim; k.vx *= 0.9; k.vz *= 0.9; }
 
     for (const b of boxes) if (b.back <= 0 && !k.item && k.finish == null && (b.m.position.x - k.x) ** 2 + (b.m.position.z - k.z) ** 2 < 6) {
@@ -267,7 +298,7 @@ export async function runRace(ctx: Ctx, cfg: RaceConfig): Promise<Score[]> {
   await new Promise<void>((resolve) => {
     const stop = ctx.frame((dt, t) => {
       clock += dt;
-      overlay.textContent = clock < -0.6 ? String(Math.ceil(-clock - 0.6)) : clock < 0.6 ? 'GO!' : '';
+      overlay.textContent = clock < -2.9 ? course.name : clock < -0.6 ? String(Math.ceil(-clock - 0.6)) : clock < 0.6 ? 'GO!' : '';
       const order = ranked();
       if (clock >= 0) {
         order.forEach((k, place) => step(k, dt, place));
@@ -293,7 +324,7 @@ export async function runRace(ctx: Ctx, cfg: RaceConfig): Promise<Score[]> {
           h('span', k.finish != null ? '🏁' : `${k.item ? ITEM_LABEL[k.item].split(' ')[0] : ''} L${clamp(k.lap + 1, 1, LAPS)}`))));
         order.forEach((k, i) => {
           const big = k.finish != null ? `🏁 Finished ${ordinal(i + 1)}!` : `${ordinal(i + 1)} · Lap ${clamp(k.lap + 1, 1, LAPS)}/${LAPS}`;
-          const info = k.spin > 0 ? (boat ? 'Whirlpool!' : 'Spinning out!') : k.slow > 0 ? (boat ? 'Hit a wave sideways!' : 'Zapped!') : '';
+          const info = k.spin > 0 ? (boat ? 'Whirlpool!' : 'Spinning out!') : k.slow > 0 ? (boat ? 'Hit a wave sideways!' : 'Zapped!') : k.off ? (boat ? 'Outside the buoys: rough water!' : 'Off the track!') : '';
           const btn = boat ? (k.cool <= 0 ? 'Swipe up to BOOST!' : 'Recharging…') : k.item ? ITEM_LABEL[k.item] : 'No item';
           if (big + info !== k.liveText || btn !== k.btnText) { k.liveText = big + info; k.btnText = btn; ctx.live(k.p, { big, info, 'btn-item': btn, 'btn-boost': btn }); }
         });

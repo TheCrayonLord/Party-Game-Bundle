@@ -57,3 +57,7 @@ All of these are original characters.
 - Tick-It lives on the phones (the player's ticket, waiting screens, "you earned 80 tickets!"), which keeps the TV character and the phone character distinct.
 
 Runner-up: **Colonel Kernel**, if a louder, jokier announcer is preferred. He's also the cheapest to build.
+
+## Decision so far
+
+Leaning towards **Gus the Goldfish** or **Sprocket the Strongman Bear**. Both are in the game and take turns: a different mascot hosts each session, so more can join the rotation later. Their lines live in `src/host/mascot.ts`.

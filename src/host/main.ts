@@ -6,6 +6,7 @@ import { h, ordinal, qs } from '../core/util';
 import { Room, MAX_PLAYERS, type Player } from './room';
 import { Cancelled, Ctx, type GameDef, type GameResult } from './ctx';
 import { GAMES } from '../games';
+import { nextMascot, say } from './mascot';
 
 const app = document.getElementById('app')!;
 const TICKETS = [100, 80, 65, 55, 48, 42, 37, 33, 30, 27, 25, 23];
@@ -83,7 +84,7 @@ function lobby() {
         h('span.ride-blurb', g.meta.blurb), h('span.ride-count', ok ? `${g.meta.min}–${g.meta.max} players` : `CLOSED · needs ${g.meta.min}–${g.meta.max}`));
     })))));
 
-  app.replaceChildren(h('div.lobby', h('header.banner', h('h1', 'Party Game Bundle'), h('p', 'A night at the fair')), h('div.lobby-top', booth, h('div.lobby-right', guests, rides))));
+  app.replaceChildren(h('div.lobby', h('header.banner', h('h1', 'Party Game Bundle'), h('p', 'A night at the fair')), say('lobby', () => { nextMascot(); lobby(); }), h('div.lobby-top', booth, h('div.lobby-right', guests, rides))));
 
   const open = GAMES.filter(fits);
   for (const p of room.players) {
@@ -102,7 +103,7 @@ async function start(game: GameDef | undefined) {
   let result: GameResult | null = null;
   try {
     c.wait(players, game.meta.name, game.meta.blurb, game.meta.emoji);
-    c.show(h('div.center.intro', h('div.intro-emoji', game.meta.emoji), h('h1.big', game.meta.name), h('p.sub', game.meta.blurb)));
+    c.show(h('div.center.intro', h('div.intro-emoji', game.meta.emoji), h('h1.big', game.meta.name), h('p.sub', game.meta.blurb), say('intro')));
     await c.sleep(3.5);
     result = await game.run(c);
   } catch (e) {
@@ -132,7 +133,7 @@ function results(game: GameDef, r: GameResult, players: Player[]): Promise<void>
       h('span.result-label', row.s?.label ?? (row.s ? String(row.s.score) : '—')),
       h('span.result-tix', `+${won} 🎟️`), h('span.result-total', `${row.p.tickets} total`));
   });
-  app.replaceChildren(h('div.results', h('h1.big', r.headline || `${game.meta.emoji} ${game.meta.name}: results`), h('div.result-list', ...list),
+  app.replaceChildren(h('div.results', h('h1.big', r.headline || `${game.meta.emoji} ${game.meta.name}: results`), h('div.result-list', ...list), say('results'),
     h('button.btn', { onclick: () => resultsDone?.() }, 'Back to the park')));
   for (const p of players) room.setView(p, p.vip
     ? { type: 'choice', key: 'results-vip', id: 'back', prompt: `You have ${p.tickets} prize tickets`, options: [{ id: 'go', label: 'Back to the park' }] }

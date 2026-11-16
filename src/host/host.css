@@ -153,3 +153,13 @@ body.host { font-size: clamp(14px, 1.5vw, 26px); }
 .agent-ask { font-size: 1.6em; }
 .agent-places { display: flex; flex-wrap: wrap; gap: .4em; justify-content: center; max-width: 44em; }
 .agent-place { background: rgba(0,0,0,.3); border-radius: 999px; padding: .15em .8em; font-size: .9em; }
+
+/* mascot */
+.mascot { display: flex; align-items: center; gap: .6em; align-self: center; max-width: 34em; }
+.mascot[title]:not([title=""]) { cursor: pointer; }
+.mascot-face { font-size: 3em; line-height: 1; filter: drop-shadow(0 .08em 0 rgba(0,0,0,.4)); animation: bob 2.4s ease-in-out infinite alternate; }
+@keyframes bob { to { transform: translateY(-.12em) rotate(4deg); } }
+.mascot-bubble { background: var(--cream); color: var(--ink); border-radius: 1em 1em 1em .2em; padding: .4em .9em; border: .15em solid var(--ink); font-size: .95em; text-align: left; }
+.mascot-name { font-family: var(--display); font-size: .7em; color: var(--red); text-transform: uppercase; letter-spacing: .1em; }
+.lobby .mascot { position: absolute; right: 1.5em; top: .8em; max-width: 24em; font-size: .8em; }
+.lobby { position: relative; }

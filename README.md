@@ -39,6 +39,7 @@ The game picks automatically: if the page is served by the relay server it uses 
 | Prize tickets across games | Done (no end-of-night ceremony yet) |
 | WebRTC transport and relay transport | Both work; automatic fall-back from one to the other mid-session is not built yet |
 | Sound | None yet: waiting on a decision about the samples |
+| Mascot | Gus the Goldfish and Sprocket the Strongman Bear take turns hosting, one per session (emoji stand-ins and speech bubbles for now). Click the mascot in the lobby to swap, or add `?mascot=gus` / `?mascot=sprocket` |
 
 ### Games
 
@@ -46,10 +47,10 @@ All 14 games from the plan are playable.
 
 | Zone | Game | Players | Notes |
 |---|---|---|---|
-| Speedway | Tilt Kart | 2–12 | 2 tracks, 3 items, 3 laps |
+| Speedway | Tilt Kart | 2–12 | 3 courses (host picks), 3 items, 3 laps |
 | Speedway | Sky Slalom | 2–12 | 22 hoops, gold centres, gusts of wind |
 | Speedway | Snail Sprint | 2–12 | |
-| Lagoon | Riptide Regatta | 2–12 | Shares Tilt Kart's engine: waves, whirlpools, currents, buoys, swipe to boost |
+| Lagoon | Riptide Regatta | 2–12 | Shares Tilt Kart's engine. Open water, 3 courses marked by buoys; waves, whirlpools, currents, rocks, swipe to boost |
 | Art Alley | Sketch & Switch | 3–12 | |
 | Art Alley | Fake Artist | 4–10 | |
 | Art Alley | Draw Your Racer | 2–12 | Draw a kart or boat, vote for best ride, then race it |
@@ -63,7 +64,7 @@ All 14 games from the plan are playable.
 
 Not started: the 3D park hub, regular/performance start, the end-of-night prize ceremony, sound, and everything in the backlog.
 
-Simplified for now compared with the plan: Riptide Regatta's buoys are obstacles (no "pass on the correct side" rule); Sky Slalom has no speed gain from diving; Hot Potato's eliminated players get one fuse-shortening tap; Secret Agent always has one spy; Heist Crew has one crew at any size.
+Simplified for now compared with the plan: Riptide Regatta has no "pass the buoy on the correct side" rule (straying outside the buoys just slows you); Sky Slalom has no speed gain from diving; Hot Potato's eliminated players get one fuse-shortening tap; Secret Agent always has one spy; Heist Crew has one crew at any size.
 
 **Not yet tested on real phones.** Everything above has been played end-to-end by automated browsers pretending to be phones, and with a full room of bots. Tilt, swipe and flick on real devices, how the games feel, and difficulty balance all still need a real play session.
 
