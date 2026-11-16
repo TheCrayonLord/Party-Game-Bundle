@@ -1,5 +1,5 @@
 import type { Option } from '../core/types';
-import { h, pick, rand, shuffle } from '../core/util';
+import { SPEED, h, pick, rand, shuffle } from '../core/util';
 import { badge, type Ctx, type GameDef } from '../host/ctx';
 import type { Player } from '../host/room';
 
@@ -97,7 +97,7 @@ export const heist: GameDef = {
     const hud = () => { timeEl.textContent = `⏱ ${Math.floor(left / 60)}:${String(Math.max(0, Math.ceil(left)) % 60).padStart(2, '0')}`; strikeEl.textContent = strikes > 5 ? `🚨 × ${strikes}` : '🚨'.repeat(strikes); timeEl.classList.toggle('low', left < 30); };
 
     let ticking = false;
-    ctx.frame((dt) => { if (ticking) { left -= dt; hud(); } });
+    ctx.frame((dt) => { if (ticking) { left -= dt * SPEED; hud(); } });
     hud();
 
     for (const [pi, puz] of puzzles.entries()) {

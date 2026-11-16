@@ -5,7 +5,7 @@ const { chromium } = createRequire(import.meta.url)('playwright');
 
 const [bots = '12', speed = '6', ...only] = process.argv.slice(2);
 const base = process.env.BASE || 'http://localhost:5173';
-const all = [['tiltkart', 12], ['regatta', 12], ['snail', 12], ['sketch', 12], ['fakeartist', 10], ['drawracer', 12], ['logolab', 12], ['fib', 12], ['punchline', 12], ['heist', 12], ['dungeon', 12]];
+const all = [['tiltkart', 12], ['regatta', 12], ['skyslalom', 12], ['snail', 12], ['sketch', 12], ['fakeartist', 10], ['drawracer', 12], ['logolab', 12], ['fib', 12], ['punchline', 12], ['hotpotato', 12], ['agent', 10], ['heist', 12], ['dungeon', 12]];
 const browser = await chromium.launch();
 let failed = 0;
 for (const [game, max] of all.filter(([g]) => !only.length || only.includes(g))) {

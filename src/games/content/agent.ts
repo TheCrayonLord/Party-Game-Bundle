@@ -1,0 +1,21 @@
+/** Secret Agent locations, each with roles to hand out to the non-spies. */
+export const LOCATIONS: { name: string; roles: string[] }[] = [
+  { name: 'Ferris wheel', roles: ['Operator', 'Nervous first-timer', 'Couple on a date', 'Maintenance engineer', 'Kid with a balloon', 'Photographer', 'Stuck passenger'] },
+  { name: 'Haunted house', roles: ['Actor in a ghost costume', 'Screaming teenager', 'Ticket taker', 'Unimpressed dad', 'Fog machine technician', 'Lost child', 'Sceptic'] },
+  { name: 'Circus tent', roles: ['Ringmaster', 'Clown', 'Trapeze artist', 'Lion tamer', 'Popcorn seller', 'Audience member', 'Juggler'] },
+  { name: 'Pirate ship', roles: ['Captain', 'Lookout', 'Cook', 'Prisoner', 'Parrot owner', 'Cabin hand', 'Stowaway'] },
+  { name: 'Hospital', roles: ['Surgeon', 'Nurse', 'Patient', 'Visitor', 'Receptionist', 'Paramedic', 'Cleaner'] },
+  { name: 'Submarine', roles: ['Commander', 'Sonar operator', 'Cook', 'Engineer', 'New recruit', 'Navigator', 'Radio operator'] },
+  { name: 'Wedding', roles: ['Bride', 'Best man', 'Caterer', 'Drunk uncle', 'Photographer', 'DJ', 'Jealous ex'] },
+  { name: 'Supermarket', roles: ['Cashier', 'Shelf stacker', 'Shopper with a huge trolley', 'Security guard', 'Free-sample person', 'Manager', 'Lost toddler'] },
+  { name: 'Space station', roles: ['Commander', 'Scientist', 'Space tourist', 'Engineer', 'Doctor', 'Pilot', 'Botanist'] },
+  { name: 'School', roles: ['Head teacher', 'Supply teacher', 'Class clown', 'Caretaker', 'Dinner lady', 'New kid', 'PE teacher'] },
+  { name: 'Beach', roles: ['Lifeguard', 'Ice cream seller', 'Sunburnt tourist', 'Surfer', 'Sandcastle builder', 'Metal detectorist', 'Seagull feeder'] },
+  { name: 'Casino', roles: ['Dealer', 'High roller', 'Security', 'Bartender', 'Card counter', 'Tourist', 'Pit boss'] },
+  { name: 'Zoo', roles: ['Zookeeper', 'Vet', 'School-trip teacher', 'Gift shop cashier', 'Kid tapping the glass', 'Tour guide', 'Escaped-animal chaser'] },
+  { name: 'Aeroplane', roles: ['Pilot', 'Flight attendant', 'Nervous flyer', 'Crying baby’s parent', 'Business traveller', 'Air marshal', 'Seat recliner'] },
+  { name: 'Medieval castle', roles: ['King', 'Jester', 'Knight', 'Cook', 'Dungeon guard', 'Minstrel', 'Peasant'] },
+  { name: 'Film set', roles: ['Director', 'Lead actor', 'Stunt double', 'Make-up artist', 'Extra', 'Camera operator', 'Caterer'] },
+  { name: 'Ski resort', roles: ['Ski instructor', 'Beginner', 'Lift operator', 'Snowboarder', 'Hot chocolate seller', 'Mountain rescuer', 'Person in a cast'] },
+  { name: 'Police station', roles: ['Detective', 'Officer', 'Suspect', 'Lawyer', 'Witness', 'Desk sergeant', 'Journalist'] },
+];

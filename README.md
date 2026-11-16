@@ -42,20 +42,30 @@ The game picks automatically: if the page is served by the relay server it uses 
 
 ### Games
 
-| Zone | Game | Players | State |
+All 14 games from the plan are playable.
+
+| Zone | Game | Players | Notes |
 |---|---|---|---|
-| Speedway | Tilt Kart | 2–12 | Playable: 2 tracks, 3 items, bots |
-| Speedway | Snail Sprint | 2–12 | Playable |
-| Art Alley | Sketch & Switch | 3–12 | Playable |
-| Art Alley | Fake Artist | 4–10 | Playable |
-| Midway | Fib Finder | 3–12 | Playable: 26 questions |
-| Midway | Punchline Duel | 3–12 | Playable: 40 prompts |
-| Haunted Manor | Heist Crew | 2–12 | Playable: 4 lock types, one crew |
-| Haunted Manor | Dungeon Vote | 4–12 | Playable: 14 rooms |
+| Speedway | Tilt Kart | 2–12 | 2 tracks, 3 items, 3 laps |
+| Speedway | Sky Slalom | 2–12 | 22 hoops, gold centres, gusts of wind |
+| Speedway | Snail Sprint | 2–12 | |
+| Lagoon | Riptide Regatta | 2–12 | Shares Tilt Kart's engine: waves, whirlpools, currents, buoys, swipe to boost |
+| Art Alley | Sketch & Switch | 3–12 | |
+| Art Alley | Fake Artist | 4–10 | |
+| Art Alley | Draw Your Racer | 2–12 | Draw a kart or boat, vote for best ride, then race it |
+| Art Alley | Logo Lab | 3–12 | 30 companies |
+| Midway | Fib Finder | 3–12 | 26 questions |
+| Midway | Punchline Duel | 3–12 | 40 prompts |
+| Midway | Hot Potato Bomb | 3–12 | |
+| Fortune Tent | Secret Agent | 4–10 | 18 locations, one spy |
+| Haunted Manor | Heist Crew | 2–12 | 4 lock types, one crew |
+| Haunted Manor | Dungeon Vote | 4–12 | 14 rooms |
 
-Not started: Riptide Regatta, Sky Slalom, Hot Potato Bomb, Draw Your Racer, Logo Lab, Secret Agent, the 3D park hub, regular/performance start.
+Not started: the 3D park hub, regular/performance start, the end-of-night prize ceremony, sound, and everything in the backlog.
 
-**Not yet tested on real phones.** Everything above has been played end-to-end by automated browsers pretending to be phones, and with a full room of 12 bots. Tilt on real devices, how the games feel, and difficulty balance all still need a real play session.
+Simplified for now compared with the plan: Riptide Regatta's buoys are obstacles (no "pass on the correct side" rule); Sky Slalom has no speed gain from diving; Hot Potato's eliminated players get one fuse-shortening tap; Secret Agent always has one spy; Heist Crew has one crew at any size.
+
+**Not yet tested on real phones.** Everything above has been played end-to-end by automated browsers pretending to be phones, and with a full room of bots. Tilt, swipe and flick on real devices, how the games feel, and difficulty balance all still need a real play session.
 
 ## How it's put together
 
@@ -64,7 +74,8 @@ index.html, play.html     the TV page and the phone page
 src/core/                 networking, shared types, helpers
 src/host/                 lobby, players, scoring, and the toolkit games use (ctx.ts)
 src/controller/           the phone: join screen and every kind of controller screen (kit.ts)
-src/games/                one file per game, plus content/ for prompts and questions
+src/games/                one file per game, plus content/ for prompts and questions;
+                          racing.ts is the engine shared by the three racing games
 server/                   the small relay server
 tests/                    automated play-throughs
 ```

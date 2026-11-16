@@ -65,6 +65,12 @@ const autoplay = async (p, i) => {
         if (inp) { inp.value = String(Math.floor(Math.random() * 10000)).padStart(4, '0'); s.querySelector('.inline .btn').click(); }
         const opts = [...s.querySelectorAll('.opt:not(:disabled)')];
         if (opts.length) opts[Math.floor(Math.random() * opts.length)].click();
+        const bomb = s.querySelector('.bombpad');
+        if (bomb) {
+          bomb.setPointerCapture = () => {};
+          bomb.dispatchEvent(new PointerEvent('pointerdown', { clientX: 200, clientY: 300, pointerId: 1, bubbles: true }));
+          bomb.dispatchEvent(new PointerEvent('pointerup', { clientX: 320, clientY: 300, pointerId: 1, bubbles: true }));
+        }
         const pad = s.querySelector('.tiltpad, .rubpad');
         if (pad) {
           pad.setPointerCapture = () => {};
