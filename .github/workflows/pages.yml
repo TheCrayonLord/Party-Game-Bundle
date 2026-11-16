@@ -3,7 +3,7 @@
 name: Deploy to GitHub Pages
 on:
   push:
-    branches: [main]
+    branches: [main, claude/pensive-edison-6e1b7q]   # the working branch is the only branch so far
   workflow_dispatch:
 permissions:
   contents: read
