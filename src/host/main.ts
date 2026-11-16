@@ -7,6 +7,7 @@ import { Room, MAX_PLAYERS, type Player } from './room';
 import { Cancelled, Ctx, type GameDef, type GameResult } from './ctx';
 import { GAMES } from '../games';
 import { nextMascot, say } from './mascot';
+import { Park } from './park';
 
 const app = document.getElementById('app')!;
 const TICKETS = [100, 80, 65, 55, 48, 42, 37, 33, 30, 27, 25, 23];
@@ -15,6 +16,9 @@ let room: Room;
 let ctx: Ctx | null = null;
 let mode: 'lobby' | 'game' | 'results' = 'lobby';
 let resultsDone: (() => void) | null = null;
+type Menu = 'park' | 'list';
+let menu: Menu = 'list';          // 'park' = walk-around carnival (regular start), 'list' = plain list (performance start)
+let park: Park | null = null;
 const explained = new Set<string>();     // games whose how-to-play page has been shown this session
 const BOT_LEVELS = ['Easy', 'Normal', 'Hard'] as const;
 let botLevel = (Number(qs.get('botlevel') ?? (() => { try { return localStorage.getItem('pgb-botlevel'); } catch { return null; } })() ?? 1) || 0) as 0 | 1 | 2;
@@ -26,7 +30,20 @@ function fatal(msg: string) {
   app.replaceChildren(h('div.center', h('h1.big', 'The park is closed'), h('p.sub', msg), h('button.btn', { onclick: () => location.reload() }, 'Try again')));
 }
 
+/** The first screen: full walk-around park, or the plain list for slower computers. */
+function chooseMenu(): Promise<Menu> {
+  const forced = qs.get('menu');
+  if (forced === 'park' || forced === 'list') return Promise.resolve(forced);
+  if (qs.get('game')) return Promise.resolve('list');
+  return new Promise((resolve) => {
+    const card = (m: Menu, emoji: string, title: string, text: string) => h('button.start-card', { onclick: () => resolve(m), 'data-menu': m }, h('div.start-emoji', emoji), h('div.start-title', title), h('div.start-text', text));
+    app.replaceChildren(h('div.center', h('h1.big', 'Party Game Bundle'), h('p.sub', 'How would you like to start?'),
+      h('div.row', card('park', '🎡', 'Regular start', 'Walk around the old carnival and pick rides together.'), card('list', '📋', 'Performance start', 'A plain list of games. Best for slower computers.'))));
+  });
+}
+
 async function boot() {
+  menu = await chooseMenu();
   app.replaceChildren(h('div.center', h('h1.big', 'Opening the gates…')));
   const net = await createHost();
   net.onDown = (why) => fatal(why);
@@ -34,6 +51,7 @@ async function boot() {
   room.onChange = () => { if (mode === 'lobby') lobby(); };
   room.onInput = (p, d) => {
     if (mode === 'game') ctx?.input(p, d);
+    else if (mode === 'lobby' && park) park.input(p, d);
     else if (mode === 'lobby' && p.vip && d?.id === 'pick') start(GAMES.find((g) => g.meta.id === d.v));
     else if (mode === 'results' && p.vip && d?.id === 'back') resultsDone?.();
   };
@@ -72,13 +90,22 @@ function lobby() {
       h('div.code', room.net.code), h('div.ticket-serial', `No. ${String(Math.abs([...room.net.code].reduce((a, ch) => a * 31 + ch.charCodeAt(0), 7)) % 1000000).padStart(6, '0')} · GOOD FOR ONE NIGHT`))),
     local ? h('div.warn', 'Phones can’t reach “localhost”. Open this page using this computer’s network address instead.') : null,
   );
+  const botRow = h('div.bot-row', h('button.btn.small', { onclick: () => room.addBot(), disabled: n >= MAX_PLAYERS }, '+ Add a bot'),
+    h('button.btn.small', { title: 'How good the bots are', onclick: () => { botLevel = ((botLevel + 1) % 3) as 0 | 1 | 2; try { localStorage.setItem('pgb-botlevel', String(botLevel)); } catch { /* storage blocked */ } lobby(); } }, `Bot skill: ${BOT_LEVELS[botLevel]}`),
+    h('button.btn.small', { title: 'Switch between the walk-around park and the plain list', onclick: () => { menu = menu === 'park' ? 'list' : 'park'; park?.destroy(); park = null; lobby(); } }, menu === 'park' ? '📋 Plain list' : '🎡 Walk the park'));
+
+  if (menu === 'park') {
+    // The walk-around carnival. It is built once and then kept in step with the guest list.
+    park ??= new Park(app, room, GAMES, fits, (g) => start(g));
+    park.sync({ ticket: booth, mascot: say('lobby', () => { nextMascot(); lobby(); }), controls: botRow });
+    return;
+  }
 
   const guests = h('div.guests',
     h('h2', n ? `Guests in the park (${n}/${MAX_PLAYERS})` : 'Scan to get your ticket'),
     h('div.guest-grid', ...room.players.map((p) => h('div.guest' + (p.connected ? '' : '.away'), { title: 'Click to remove', onclick: () => room.remove(p), style: { background: p.color } },
       h('div.guest-av', p.avatar), h('div.guest-name', p.name), h('div.guest-meta', `${p.shape} ${p.tickets} 🎟️${p.vip ? ' · host' : ''}${p.bot ? ' · bot' : ''}`)))),
-    h('div.bot-row', h('button.btn.small', { onclick: () => room.addBot(), disabled: n >= MAX_PLAYERS }, '+ Add a bot'),
-      h('button.btn.small', { title: 'How good the bots are', onclick: () => { botLevel = ((botLevel + 1) % 3) as 0 | 1 | 2; try { localStorage.setItem('pgb-botlevel', String(botLevel)); } catch { /* storage blocked */ } lobby(); } }, `Bot skill: ${BOT_LEVELS[botLevel]}`)),
+    botRow,
   );
 
   const zones = [...new Set(GAMES.map((g) => g.meta.zone))];
@@ -104,6 +131,7 @@ function lobby() {
 async function start(game: GameDef | undefined) {
   if (!game || mode !== 'lobby' || !fits(game)) return;
   mode = 'game';
+  park?.destroy(); park = null;       // only one 3D scene is ever alive
   const players = [...room.players];
   const c = (ctx = new Ctx(room, app, players, game.meta));
   c.botLevel = botLevel;

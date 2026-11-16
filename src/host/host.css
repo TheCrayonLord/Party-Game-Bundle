@@ -179,3 +179,25 @@ body.host { font-size: clamp(14px, 1.5vw, 26px); }
 .mascot-name { font-family: var(--display); font-size: .7em; color: var(--red); text-transform: uppercase; letter-spacing: .1em; }
 .lobby .mascot { position: absolute; right: 1.5em; top: .8em; max-width: 24em; font-size: .8em; }
 .lobby { position: relative; }
+
+/* start screen */
+.start-card { width: 15em; background: var(--cream); color: var(--ink); border: .2em solid var(--ink); border-radius: 1em; padding: 1em; box-shadow: 0 .4em 0 rgba(0,0,0,.35); display: flex; flex-direction: column; align-items: center; gap: .3em; }
+.start-card:hover { background: #fff; transform: translateY(-3px); }
+.start-emoji { font-size: 3.4em; line-height: 1.1; }
+.start-title { font-family: var(--display); font-size: 1.5em; color: var(--red); }
+.start-text { font-size: .85em; }
+
+/* the walk-around park */
+.park { position: relative; height: 100%; overflow: hidden; }
+.park-canvas { display: block; width: 100%; height: 100%; }
+.park-labels { position: absolute; inset: 0; pointer-events: none; }
+.park-label { position: absolute; transform: translate(-50%, -100%); background: var(--cream); color: var(--ink); border: .14em solid var(--ink); border-radius: .5em; padding: .1em .5em; font-size: .68em; white-space: nowrap; display: flex; align-items: center; gap: .3em; box-shadow: 0 .2em 0 rgba(0,0,0,.3); }
+.park-label.closed { opacity: .55; filter: grayscale(1); }
+.park-emoji { font-size: 1.4em; }
+.park-name { font-family: var(--display); }
+.park-count { font-weight: 800; color: var(--red); }
+.park-count:empty { display: none; }
+.park-banner { position: absolute; left: 50%; bottom: .7em; transform: translateX(-50%); background: rgba(20,12,35,.78); border-radius: 999px; padding: .35em 1.2em; font-family: var(--display); font-size: 1.15em; color: var(--mustard); text-align: center; max-width: 80%; }
+.park-overlay > .booth { position: absolute; left: .8em; bottom: .8em; font-size: .62em; transform: rotate(-2deg); transform-origin: bottom left; }
+.park-overlay > .mascot { position: absolute; right: 1em; top: .7em; font-size: .75em; max-width: 24em; }
+.park-overlay > .bot-row { position: absolute; right: 1em; bottom: .8em; font-size: .8em; }

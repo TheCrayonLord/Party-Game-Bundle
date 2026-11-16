@@ -32,7 +32,8 @@ The game picks automatically: if the page is served by the relay server it uses 
 
 | | |
 |---|---|
-| Lobby, QR join, room codes, player tickets | Done (plain menu; the 3D park hub comes later) |
+| Lobby, QR join, room codes, player tickets | Done |
+| Two ways to start | **Regular start:** a walk-around carnival seen from above. Players appear at the gate in a puff of smoke, walk with arrows or by dragging on their phone, and pick a game by standing at it; when more than half the park is at one ride it starts, and a tie between the leading rides is settled at random. **Performance start:** the plain list, where the host player picks. Switch any time with the button in the lobby |
 | Reconnect after a phone sleeps or reloads | Done, also mid-game |
 | Host player controls the menu from their phone | Done |
 | Bots | Done |
@@ -64,7 +65,7 @@ All 14 games from the plan are playable.
 | Haunted Manor | Heist Crew | 2–12 | 4 lock types, one crew |
 | Haunted Manor | Dungeon Vote | 4–12 | 14 rooms |
 
-Not started: the 3D park hub, regular/performance start, the end-of-night prize ceremony, sound, and everything in the backlog.
+Not started: the end-of-night prize ceremony, the camera swoop into a ride, sound, and everything in the backlog.
 
 Simplified for now compared with the plan: Riptide Regatta has no "pass the buoy on the correct side" rule (straying outside the buoys just slows you); Sky Slalom has no speed gain from diving; Hot Potato's eliminated players get one fuse-shortening tap; Secret Agent always has one spy; Heist Crew has one crew at any size.
 
@@ -93,4 +94,5 @@ With `npm run dev` running in another terminal:
 node tests/smoke.mjs fib 3 1 4     # game id, phones, bots, speed-up
 node tests/bots.mjs 12 6           # every game with a full room of bots
 node tests/reconnect.mjs           # a phone drops and comes back
+node tests/park.mjs                # walk-around park: join, walk to a ride, game starts
 ```

@@ -16,6 +16,8 @@ export type View = { key: string; live?: Record<string, string> } & (
   | { type: 'info'; id: string; title: string; lines: string[]; buttons?: Option[]; input?: { placeholder: string; maxLen: number } }
   /** Tilt controller. `pitch` adds a second (forward/back) axis; `swipe` adds a swipe-up zone that sends {btn: id}. */
   | { type: 'tilt'; buttons?: Option[]; pitch?: boolean; swipe?: Option }
+  /** Walk around the park: arrow buttons and a drag-anywhere joystick. Sends {move: [x, y]} with y pointing away from the camera. */
+  | { type: 'walk' }
   /** The hot potato: flick left, right or up to throw it. Sends {flick}. */
   | { type: 'bomb'; title: string }
   | { type: 'rub' }

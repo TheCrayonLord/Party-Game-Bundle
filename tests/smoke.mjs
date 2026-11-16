@@ -16,7 +16,7 @@ const watch = (page, who) => {
 const hostPage = await (await browser.newContext({ viewport: { width: 1280, height: 720 } })).newPage();
 watch(hostPage, 'host');
 const extra = process.env.EXTRA || ''; // e.g. net=p&peerhost=localhost&peerport=9000 to test WebRTC
-await hostPage.goto(`${base}/?bots=${bots}&speed=${speed}&${extra}`);
+await hostPage.goto(`${base}/?menu=list&bots=${bots}&speed=${speed}&${extra}`);
 await hostPage.waitForSelector('.code');
 const code = (await hostPage.textContent('.code')).trim();
 console.log('room', code);

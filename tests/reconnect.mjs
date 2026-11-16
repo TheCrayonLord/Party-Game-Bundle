@@ -6,7 +6,7 @@ const { chromium, devices } = createRequire(import.meta.url)('playwright');
 const base = process.env.BASE || 'http://localhost:5173';
 const browser = await chromium.launch();
 const host = await (await browser.newContext({ viewport: { width: 1280, height: 720 } })).newPage();
-await host.goto(`${base}/?bots=2`);
+await host.goto(`${base}/?menu=list&bots=2`);
 const code = (await host.textContent('.code')).trim();
 const phoneContext = await browser.newContext({ ...devices['iPhone 13'] });
 

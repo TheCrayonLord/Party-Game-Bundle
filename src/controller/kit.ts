@@ -66,6 +66,7 @@ function build(v: View, send: Send, color: string, root: HTMLElement): HTMLEleme
 
     case 'tilt': return tiltPad(v, send);
     case 'bomb': return bombPad(v, send);
+    case 'walk': return walkPad(send);
     case 'rub': return rubPad(send);
   }
 }
@@ -168,6 +169,37 @@ function tiltPad(v: Extract<View, { type: 'tilt' }>, send: Send): HTMLElement[] 
   }
   for (const b of v.buttons || []) out.push(h('button.btn.bigbtn', { 'data-live': 'btn-' + b.id, onpointerdown: (e: Event) => { e.preventDefault(); send({ btn: b.id }); } }, b.label));
   return out;
+}
+
+function walkPad(send: Send): HTMLElement[] {
+  const knob = h('div.walk-knob');
+  const stick = h('div.walk-stick', knob, h('p', 'Drag anywhere here to walk'));
+  let origin: [number, number] | null = null, drag: [number, number] = [0, 0], sent = '0,0';
+  const keys = new Set<string>();
+  const dirs: Record<string, [number, number]> = { up: [0, 1], down: [0, -1], left: [-1, 0], right: [1, 0] };
+  stick.onpointerdown = (e) => { stick.setPointerCapture(e.pointerId); origin = [e.clientX, e.clientY]; drag = [0, 0]; };
+  stick.onpointermove = (e) => {
+    if (!origin) return;
+    let dx = (e.clientX - origin[0]) / 55, dy = (origin[1] - e.clientY) / 55;
+    const m = Math.hypot(dx, dy); if (m > 1) { dx /= m; dy /= m; }
+    drag = [dx, dy]; knob.style.transform = `translate(${dx * 40}px, ${-dy * 40}px)`;
+  };
+  stick.onpointerup = stick.onpointercancel = () => { origin = null; drag = [0, 0]; knob.style.transform = ''; };
+  const arrow = (id: string, label: string) => {
+    const b = h('button.walk-arrow.' + id, label);
+    b.onpointerdown = (e) => { e.preventDefault(); b.setPointerCapture(e.pointerId); keys.add(id); };
+    b.onpointerup = b.onpointercancel = () => keys.delete(id);
+    return b;
+  };
+  every(60, () => {
+    let x = drag[0], y = drag[1];
+    for (const k of keys) { x += dirs[k][0]; y += dirs[k][1]; }
+    const m = Math.hypot(x, y); if (m > 1) { x /= m; y /= m; }
+    const key = `${x.toFixed(2)},${y.toFixed(2)}`;
+    if (key !== sent) { sent = key; send({ move: [Number(x.toFixed(2)), Number(y.toFixed(2))] }); }
+  });
+  return [h('div.livebig', { 'data-live': 'big' }, 'Walk to a ride'), h('p.sub', { 'data-live': 'info' }, 'When most of you stand at the same ride, it starts.'), stick,
+    h('div.walk-arrows', arrow('up', '▲'), arrow('left', '◀'), arrow('down', '▼'), arrow('right', '▶'))];
 }
 
 function bombPad(v: Extract<View, { type: 'bomb' }>, send: Send): HTMLElement[] {
