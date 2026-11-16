@@ -167,6 +167,12 @@ function tiltPad(v: Extract<View, { type: 'tilt' }>, send: Send): HTMLElement[] 
     zone.onpointerup = (e) => { if (start && start[1] - e.clientY > 40 && performance.now() - start[2] < 700) send({ btn: sw.id }); start = null; };
     out.push(zone);
   }
+  for (const b of v.holds || []) {
+    const el = h('button.btn.bigbtn', { 'data-live': 'btn-' + b.id }, b.label);
+    el.onpointerdown = (e) => { e.preventDefault(); el.setPointerCapture(e.pointerId); el.classList.add('held'); send({ hold: b.id, on: true }); };
+    el.onpointerup = el.onpointercancel = () => { el.classList.remove('held'); send({ hold: b.id, on: false }); };
+    out.push(el);
+  }
   for (const b of v.buttons || []) out.push(h('button.btn.bigbtn', { 'data-live': 'btn-' + b.id, onpointerdown: (e: Event) => { e.preventDefault(); send({ btn: b.id }); } }, b.label));
   return out;
 }

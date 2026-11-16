@@ -230,3 +230,9 @@ body.host { font-size: clamp(14px, 1.5vw, 26px); }
 .park-overlay > .booth { position: absolute; left: .7em; top: .7em; font-size: .5em; transform: rotate(-2deg); transform-origin: top left; }
 .park-overlay > .mascot { position: absolute; right: 1em; top: .7em; font-size: .75em; max-width: 24em; }
 .park-overlay > .bot-row { position: absolute; right: 1em; bottom: .8em; font-size: .8em; }
+
+/* Downhill Dash: one framed view per skier */
+.ski-huds { position: absolute; inset: 0; pointer-events: none; }
+.ski-hud { position: absolute; border: .18em solid; box-sizing: border-box; display: flex; align-items: flex-start; gap: .5em; padding: .35em .5em; font-size: .85em; }
+.ski-place { font-family: var(--display); font-size: 1.25em; color: #fff; text-shadow: 0 .08em 0 rgba(0,0,0,.6), 0 0 .3em rgba(0,0,0,.6); }
+.ski-speed { margin-left: auto; color: #fff; text-shadow: 0 .08em 0 rgba(0,0,0,.6), 0 0 .3em rgba(0,0,0,.6); }

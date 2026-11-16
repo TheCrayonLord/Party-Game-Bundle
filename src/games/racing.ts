@@ -1,15 +1,10 @@
-// The shared racing engine. Tilt Kart, Riptide Regatta and Draw Your Racer are all this with different settings.
+// The shared racing engine. Tilt Kart and Riptide Regatta are both this with different settings.
 import * as THREE from 'three';
-import type { Stroke } from '../core/types';
-import { clamp, drawStrokes, h, ordinal, pick, rand } from '../core/util';
+import { clamp, h, ordinal, pick, rand } from '../core/util';
 import type { Ctx, Score } from '../host/ctx';
 import type { Player } from '../host/room';
 
-export interface RaceConfig {
-  kind: 'kart' | 'boat';
-  /** Drawn racers (player id -> strokes) replace the standard vehicle with the player's own art. */
-  skins?: Map<string, Stroke[]>;
-}
+export interface RaceConfig { kind: 'kart' | 'boat' }
 
 /** Lets the host player choose the course from their phone; falls back to a random one. */
 async function chooseCourse(ctx: Ctx, kind: 'kart' | 'boat'): Promise<Course> {
@@ -215,17 +210,7 @@ export async function runRace(ctx: Ctx, cfg: RaceConfig): Promise<Score[]> {
   };
   const build = (p: Player) => {
     const g = new THREE.Group();
-    const skin = cfg.skins?.get(p.id);
-    if (skin?.length) {
-      // The player's drawing, laid flat on a plate in their colour. The top of the drawing is the front.
-      const c = document.createElement('canvas'); c.width = c.height = 256;
-      drawStrokes(c.getContext('2d')!, skin, 256);
-      const art = new THREE.Mesh(new THREE.PlaneGeometry(4.4, 4.4), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c), transparent: true }));
-      art.rotation.x = -Math.PI / 2; art.rotation.z = Math.PI; art.position.y = 0.75;
-      const plate = new THREE.Mesh(new THREE.CylinderGeometry(2.5, 2.5, 0.5, 8), mat('#fbf5e6')); plate.position.y = 0.4;
-      const rim = new THREE.Mesh(new THREE.CylinderGeometry(2.8, 2.8, 0.3, 8), mat(p.color)); rim.position.y = 0.2;
-      g.add(rim, plate, art);
-    } else if (boat) {
+    if (boat) {
       const hull = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.8, 2.6), mat(p.color)); hull.position.y = 0.5;
       const bow = new THREE.Mesh(new THREE.ConeGeometry(1.34, 1.8, 4), mat(p.color)); bow.rotation.x = Math.PI / 2; bow.rotation.z = Math.PI / 4; bow.position.set(0, 0.5, 2.2);
       const mast = new THREE.Mesh(new THREE.BoxGeometry(0.15, 2.6, 0.15), mat('#f6ead2')); mast.position.set(0, 1.9, 0);
@@ -238,7 +223,7 @@ export async function runRace(ctx: Ctx, cfg: RaceConfig): Promise<Score[]> {
       g.add(body, nose, head);
       for (const [wx, wz] of [[-1.1, 1], [1.1, 1], [-1.1, -1], [1.1, -1]]) { const w = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.8, 0.9), mat('#1b1220')); w.position.set(wx, 0.4, wz); g.add(w); }
     }
-    if (!skin?.length) { const b = badge(p); b.position.set(0, boat ? 0.95 : 1.07, boat ? 0.9 : 0.9); g.add(b); }
+    const b = badge(p); b.position.set(0, boat ? 0.95 : 1.07, 0.9); g.add(b);
     g.scale.setScalar(1.5); scene.add(g);
     return g;
   };

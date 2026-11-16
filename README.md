@@ -33,7 +33,7 @@ The game picks automatically: if the page is served by the relay server it uses 
 | | |
 |---|---|
 | Lobby, QR join, room codes, player tickets | Done |
-| Two ways to start | **Regular start:** a walk-around carnival seen from above. Players appear at the gate in a puff of smoke, walk with arrows or by dragging on their phone, and pick a game by standing at it; when more than half the park is at one ride it starts, and a tie between the leading rides is settled at random. **Performance start:** the plain list, where the host player picks. Switch any time with the button in the lobby |
+| Two ways to start | **Regular start:** a walk-around carnival seen from above, with winding trails and a themed building for each game. Players appear at the gate in a puff of smoke, walk with arrows or by dragging on their phone, and pick a game by standing at it; when more than half the park is at one ride it starts, and a tie between the leading rides is settled at random. **Performance start:** the plain list, where the host player picks. Switch any time with the button in the lobby |
 | Reconnect after a phone sleeps or reloads | Done, also mid-game |
 | Host player controls the menu from their phone | Done |
 | Bots | Done |
@@ -42,7 +42,8 @@ The game picks automatically: if the page is served by the relay server it uses 
 | Sound | None yet: waiting on a decision about the samples |
 | How-to-play page | Shown before the first match of each game in a session; the host player taps to continue |
 | Bot skill | Easy / Normal / Hard button in the lobby (affects the racing, flying, snail, trivia and ghost-train bots) |
-| Mascot | Gus the Goldfish and Sprocket the Strongman Bear take turns hosting, one per session (emoji stand-ins and speech bubbles for now). Click the mascot in the lobby to swap, or add `?mascot=gus` / `?mascot=sprocket` |
+| Placements screen | After every game: a podium revealed third to first, then the table with prize tickets and arrows showing who moved up or down overall. Team and hidden-role games get a banner instead |
+| Mascot | Gus the Goldfish, Sprocket the Strongman Bear, Colonel Kernel and Madame Bulb take turns hosting, one per session (emoji stand-ins and speech bubbles for now). They remark on lead changes, crashes, eliminations and whoever is stuck in last during games, and on winners, streaks and close rivalries afterwards. Click the mascot in the lobby to swap, or add `?mascot=gus`, `sprocket`, `kernel` or `bulb` |
 
 ### Games
 
@@ -52,11 +53,11 @@ All 14 games from the plan are playable.
 |---|---|---|---|
 | Speedway | Tilt Kart | 2–12 | 6 themed tracks (host picks), 3 items, 3 laps |
 | Speedway | Sky Slalom | 2–12 | 22 hoops, gold centres, gusts of wind |
+| Speedway | Downhill Dash | 2–12 | Third-person ski race, each skier in their own part of the screen. Four at a time; bigger groups race in heats and the best times win. 3 hills including a night run |
 | Speedway | Snail Sprint | 2–12 | |
 | Lagoon | Riptide Regatta | 2–12 | Shares Tilt Kart's engine. Open water, 6 themed courses marked by buoys, including a night course where each boat carries a lamp; waves, whirlpools, currents, rocks, swipe to boost |
 | Art Alley | Sketch & Switch | 3–12 | |
 | Art Alley | Fake Artist | 4–10 | |
-| Art Alley | Draw Your Racer | 2–12 | Draw a kart or boat, vote for best ride, then race it |
 | Art Alley | Logo Lab | 3–12 | 30 companies |
 | Midway | Fib Finder | 3–12 | 26 questions |
 | Midway | Punchline Duel | 3–12 | 40 prompts |
