@@ -44,7 +44,8 @@ So the "small Node server" from the brief is still built — but as a tiny **rel
 
 ```ts
 interface GameModule {
-  meta: { id; name; minPlayers; maxPlayers; needsTilt; estMinutes; category };
+  meta: { id; name; minPlayers; maxPlayers; needsTilt; estMinutes; zone };
+  attraction: { mapPosition; entranceModel; marquee };   // how it appears in the park
   createHost(ctx: HostContext): HostGame;          // TV side: logic + render
   createController(ctx: ControllerContext): ControllerGame; // phone side: UI
 }
@@ -55,7 +56,7 @@ interface GameModule {
 
 ### 2.3 Stack
 
-TypeScript, Vite, Canvas 2D on the host (PixiJS only if performance demands it), plain DOM on the phone. PeerJS (or equivalent) for WebRTC signalling, a QR library, Vitest for game-logic tests. Monorepo layout:
+TypeScript, Vite, **Three.js** on the host, plain DOM on the phone. Tilt Kart is built in Three.js from the start (top-down, low-poly) so it doesn't need rewriting when the 3D park arrives. Drawing and word games are flat panels (signs, posters, stage curtains) over a simple 3D backdrop of their attraction. PeerJS (or equivalent) for WebRTC signalling, a QR library, Vitest for game-logic tests. Monorepo layout:
 
 ```
 /core         transport, rooms, players, module API, round kit
@@ -77,12 +78,58 @@ TypeScript, Vite, Canvas 2D on the host (PixiJS only if performance demands it),
 
 ---
 
-## 3. Milestones
+## 3. Theme: retro theme park
+
+A 1950s carnival at dusk: faded paint, string lights, jingly organ music, a vintage mascot, fireworks. The whole pack is one evening at the park.
+
+### 3.1 Look
+- Stylized low-poly 3D in Three.js. Sun-bleached palette (cream, tomato red, teal, mustard) against a purple-orange dusk sky; string lights and marquee bulbs are the main light sources.
+- First version of every model is built from simple shapes in code, so the park exists without waiting on an artist. Models can be replaced with hand-made ones later without touching game logic.
+- The mascot is an original character who acts as the announcer: appears on signs, introduces each game, hands out prizes. Text and organ stings only, no voice acting.
+- Audio direction is fairground organ / calliope. No audio is produced until samples are approved.
+
+### 3.2 Joining: the ticket booth
+- The TV opens on the park entrance with a giant ticket booth. The QR code and room code sit on the booth's marquee.
+- The QR is drawn as a flat, high-contrast overlay facing the screen, never skewed on a 3D surface, so it scans from across the room. A small copy stays in a corner of the park map for late arrivals.
+- On the phone: enter a name, pick an avatar, and receive a **ticket** (name + avatar + color/shape). The ticket is the phone's home screen for the night and later shows the prize-ticket count.
+- On the TV: each new player's avatar walks through the turnstile with a clunk and joins the crowd.
+
+### 3.3 Navigation: the park map
+- Main menu is a tilted overhead view of the park. All player avatars wander as one crowd.
+- The host (VIP) swipes on their phone to move between attractions; the crowd walks over and the attraction's marquee lights up with name, player count and length.
+- Confirm, and the camera swoops down first-person to the ride entrance, then the game begins. The swoop is about 3 seconds and skippable, so replaying a game stays fast.
+- Attractions that don't fit the current group size show a "CLOSED" sign. Games not yet built are fenced-off construction sites with "COMING SOON", so the map visibly grows as games are added. Each game registers its own spot on the map, so adding a game adds an attraction automatically.
+
+### 3.4 Zones
+
+| Zone | Attractions | In-park fiction |
+|---|---|---|
+| **Speedway** | Tilt Kart | Go-kart track |
+| | Sky Slalom | Paper planes over the park through lit hoops, fireworks behind |
+| | Snail Sprint | Derby booth with a mechanical snail-race board |
+| **Lagoon** | Riptide Regatta | Boat race around the lagoon |
+| **Art Alley** | Sketch & Switch | Caricature stalls |
+| | Fake Artist | Shared easel on the street |
+| | Draw Your Racer | Paint shop beside the track |
+| | Logo Lab | Sign painter's workshop |
+| **Midway** | Fib Finder | Barker's booth: "Step right up, spot the truth!" |
+| | Punchline Duel | Puppet stage |
+| | Hot Potato Bomb | Carnival game stall with a fizzing cartoon bomb |
+| **Fortune Tent** | Secret Agent | Fortune teller; the location appears in the crystal ball |
+| **Haunted Manor** | Heist Crew | The manor's vault |
+| | Dungeon Vote | Ghost train: each vote is a track switch in the dark |
+
+### 3.5 Prize tickets and the end of the night
+- Every game pays out prize tickets by placement, scaled so each game is worth about the same regardless of length. Everyone earns something for playing.
+- Phones show the running ticket count on the player's ticket; the park map shows a leaderboard on a painted scoreboard.
+- The host can "close the park" at any time. Finale at the prize booth: players are called up from last to first, each receiving a prize sized to their rank (a comb, a goldfish, a kazoo…), and the winner gets the giant stuffed animal under fireworks.
+
+## 4. Milestones
 
 Build order follows the brief. Each milestone ends with a real-people playtest; the exit criteria are what must be true before moving on.
 
 ### M0 — Platform foundation
-Lobby with QR + room code, join flow, player identity (name, color, shape), transport abstraction with WebRTC and the relay fallback, reconnect, VIP menu control, game picker, module API, bots, iOS "Enable motion" flow, controller kit v0 (tilt, button).
+**Plain 2D menu** lobby with QR + room code (no 3D park yet), join flow, player identity (name, color, shape), transport abstraction with WebRTC and the relay fallback, reconnect, VIP menu control, game picker, module API, bots, iOS "Enable motion" flow, controller kit v0 (tilt, button).
 Includes a throwaway **tech-test game**: every player is a dot they steer by tilt.
 **Exit:** 8 real phones (mixed iOS/Android) join in under a minute, steer dots with no noticeable lag for 10 minutes, survive a phone lock/unlock, and at least one phone plays on mobile data instead of the host's Wi-Fi.
 
@@ -90,30 +137,34 @@ Includes a throwaway **tech-test game**: every player is a dot they steer by til
 Racing engine: spline-based tracks, checkpoints/lap counting, kart physics, collisions, item system, catch-up logic, results. 3 tracks.
 **Exit:** first-time players complete a lap without instruction; races with 12 are readable; last place still has fun.
 
-### M2 — Riptide Regatta
+### M2 — The park hub
+Replaces the plain menu with the 3D park: entrance and ticket booth, phone tickets, turnstile walk-in, tilted park map with wandering crowd, swipe navigation, camera swoop into Tilt Kart, "closed" and "coming soon" states, prize tickets and scoreboard, end-of-night prize ceremony. All six zones are laid out; only the Speedway has a working ride.
+**Exit:** runs smoothly on an ordinary laptop with integrated graphics; from scanning the QR to starting a race still takes under a minute; nobody is confused about how to pick a game.
+
+### M3 — Riptide Regatta
 Proves the racing engine is reusable: new physics profile (momentum, drift), currents/waves/whirlpools as track hazards, swipe-to-boost. 3 courses.
 **Exit:** feels like a different game from Tilt Kart, built in well under half the time.
 
-### M3 — Motion minis: Sky Slalom, Snail Sprint, Hot Potato Bomb
+### M4 — Motion minis: Sky Slalom, Snail Sprint, Hot Potato Bomb
 Adds swipe/flick, rub and shake to the controller kit. Three small games; each should take days, not weeks.
 
-### M4 — Drawing: Sketch & Switch, Fake Artist, Logo Lab, then Draw Your Racer
+### M5 — Drawing: Sketch & Switch, Fake Artist, Logo Lab, then Draw Your Racer
 Drawing pad (strokes sent as vectors, replayable on TV), the submit/vote/reveal pipeline, gallery reveal. Draw Your Racer comes last in this block because it needs both the drawing kit and the racing engine.
 
-### M5 — Word / bluffing: Fib Finder, Punchline Duel, Secret Agent
+### M6 — Word / bluffing: Fib Finder, Punchline Duel, Secret Agent
 Text input, content packs (prompts, trivia, locations), duplicate/truth detection, content tagged for a future family-friendly toggle.
 
-### M6 — Co-op / strategy: Heist Crew, Dungeon Vote
+### M7 — Co-op / strategy: Heist Crew, Dungeon Vote
 Asymmetric per-phone information, puzzle generators, branching story content.
 
-### M7 — Pack polish
+### M8 — Pack polish
 Cross-game party scoring / playlists, sound and music pass (style chosen from audio samples first — no audio is produced for the game until samples are approved), family-friendly lobby toggle, consistent visual language, settings, accessibility pass, relay fallback hardened, final content pass.
 
-**Rough sizing (one developer):** M0 2–3 weeks · M1 3–4 · M2 1–2 · M3 2–3 · M4 3–4 · M5 2–3 · M6 3–4 · M7 2–3. First playable party night is at the end of M1.
+**Rough sizing (one developer):** M0 2–3 weeks · M1 3–4 · M2 (park) 3–4 · M3 1–2 · M4 2–3 · M5 3–4 · M6 2–3 · M7 3–4 · M8 2–3. First playable party night is at the end of M1; the park arrives at the end of M2. Each later game also includes building its attraction entrance.
 
 ---
 
-## 4. Game designs
+## 5. Game designs
 
 ### Racing / motion
 
@@ -192,7 +243,7 @@ Cross-game party scoring / playlists, sound and music pass (style chosen from au
 
 ---
 
-## 5. Player-count map
+## 6. Player-count map
 
 | Game | Min | Sweet spot | Max | At 11–12 players |
 |---|---|---|---|---|
@@ -214,7 +265,7 @@ The picker greys out games that don't fit the current room size.
 
 ---
 
-## 6. Risks
+## 7. Risks
 
 | Risk | Impact | Mitigation |
 |---|---|---|
@@ -225,12 +276,15 @@ The picker greys out games that don't fit the current room size.
 | 12 players unreadable on TV | Racing chaos | Color + shape + name, bold outlines, "ping me" tap, wide tracks, test with bots from M1 |
 | Phones sleep / tabs reload | Players drop mid-game | Wake lock, token-based reconnect, bot takes over in racing games until they return |
 | Content volume (prompts, trivia, puzzles, rooms) | Games get stale by night two | Content as data files, target counts per game, treat writing as a scheduled task rather than an afterthought |
+| 3D park is slow on the host's laptop | Stutter on the TV, laggy racing | Low-poly, few real lights, capped resolution, quality setting; tested on integrated graphics in M2 |
+| The park becomes a time sink | Polish on the menu instead of games | M2 is time-boxed; simple-shape models first, prettier ones only in the polish milestone |
+| Menu ceremony slows the party down | Breaks "playing in 30 seconds" | Swoop is short and skippable; "play again" skips the map entirely |
 | 14 games is a lot | Never ships | Each milestone is a shippable pack on its own; shared kits make later games cheap |
 | Offensive text/drawings | Awkward with the wrong crowd | VIP can kick or censor a submission; family-friendly lobby toggle later |
 
 ---
 
-## 7. Playtesting
+## 8. Playtesting
 
 - **Every milestone:** one session with 6+ real people on their own phones. Watch for: time to first join, questions asked out loud, moments of laughter, moments people look at their phones when they should be looking up.
 - **Each game must pass:** understood without explanation by round two · the room is noisy · someone asks to play again.
@@ -238,7 +292,7 @@ The picker greys out games that don't fit the current room size.
 
 ---
 
-## 8. Backlog (after the core 14)
+## 9. Backlog (after the core 14)
 
 Ranked by how much existing tech they reuse:
 
@@ -258,10 +312,12 @@ Ranked by how much existing tech they reuse:
 
 ---
 
-## 9. Decisions
+## 10. Decisions
 
 - **Internet:** required; no offline mode.
 - **Networks:** players do not need to share the host's Wi-Fi.
 - **Tone:** no family filter; a family-friendly lobby toggle may come later.
 - **Audio:** samples must be heard and approved before any audio is generated for the game.
+- **Theme:** retro 1950s theme park, low-poly 3D in Three.js; park map as the main menu; six zones; prize tickets and a stuffed-animal finale.
+- **Build order:** plain menu + QR join + Tilt Kart first, then the park hub, then the remaining games.
 - **Hosting:** static HTTPS site, pending confirmation.
