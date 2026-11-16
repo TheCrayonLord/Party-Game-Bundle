@@ -182,6 +182,9 @@ export class Ctx {
     if (vip) this.wait([vip]);
   }
 
+  /** Registers something to tear down when the game ends (renderers, listeners). */
+  onEnd(fn: () => void) { this.cleanups.push(fn); }
+
   destroy() {
     if (!this.alive) return;
     this.alive = false;

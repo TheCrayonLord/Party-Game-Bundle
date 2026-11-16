@@ -1,0 +1,40 @@
+body.phone { font-size: 18px; touch-action: manipulation; -webkit-user-select: none; user-select: none; overscroll-behavior: none; }
+#app { display: flex; flex-direction: column; height: 100dvh; }
+.ticket { display: flex; align-items: center; gap: .6em; padding: .45em .8em; background: var(--cream); color: var(--ink); border-bottom: 4px dashed var(--red); flex: none; }
+.ticket-av { font-size: 1.6em; width: 1.7em; height: 1.7em; border-radius: 50%; display: grid; place-items: center; border: 3px solid var(--ink); }
+.ticket-name { font-family: var(--display); font-size: 1.1em; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ticket-tix { font-weight: 800; color: var(--red); }
+.screen { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: .8em; padding: 1em; overflow: auto; }
+.screen.centered { justify-content: center; align-items: center; text-align: center; }
+.screen h2 { font-size: 1.5em; color: var(--mustard); }
+.screen p { margin: 0; }
+.emoji { font-size: 4em; }
+.sub { opacity: .85; }
+.status { min-height: 1.4em; font-weight: 700; color: var(--mustard); text-align: center; }
+input[type=text], textarea { font: inherit; font-size: 1.2em; width: 100%; padding: .6em; border-radius: 12px; border: 3px solid var(--ink); background: var(--paper); color: var(--ink); -webkit-user-select: text; user-select: text; }
+textarea { resize: none; height: 5.5em; }
+.count { font-size: .75em; opacity: .7; text-align: right; }
+.opts { display: flex; flex-direction: column; gap: .6em; }
+.opt { background: var(--cream); color: var(--ink); border: 3px solid var(--ink); border-radius: 14px; padding: .8em; font-size: 1.1em; font-weight: 700; box-shadow: 0 4px 0 rgba(0,0,0,.35); text-align: center; }
+.opt:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(0,0,0,.35); background: var(--mustard); }
+.avatars { display: grid; grid-template-columns: repeat(8, 1fr); gap: .3em; }
+.avatars button { font-size: 1.5em; background: rgba(255,255,255,.12); border: 3px solid transparent; border-radius: 10px; padding: .15em 0; }
+.avatars button.on { border-color: var(--mustard); background: rgba(255,255,255,.3); }
+.err { color: #ffb4a0; font-weight: 700; min-height: 1.3em; }
+.drawwrap { display: flex; flex-direction: column; align-items: center; gap: .5em; }
+.drawwrap canvas { touch-action: none; width: min(100%, 52dvh); aspect-ratio: 1; }
+.tools { display: flex; gap: .4em; flex-wrap: wrap; justify-content: center; align-items: center; }
+.swatch { width: 2.1em; height: 2.1em; border-radius: 50%; border: 3px solid var(--cream); }
+.swatch.on { outline: 3px solid var(--mustard); outline-offset: 2px; }
+.tool { background: var(--teal); color: var(--cream); border: 3px solid var(--cream); border-radius: 10px; padding: .35em .7em; font-weight: 700; }
+.card { background: var(--cream); color: var(--ink); border-radius: 14px; padding: .8em 1em; border: 3px solid var(--ink); display: flex; flex-direction: column; gap: .5em; -webkit-user-select: text; user-select: text; }
+.card p { font-size: 1.05em; }
+.inline { display: flex; gap: .5em; }
+.inline .btn { flex: none; }
+.tiltpad, .rubpad { flex: 1; min-height: 9em; border-radius: 18px; border: 4px dashed rgba(255,255,255,.5); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .5em; touch-action: none; position: relative; text-align: center; padding: 1em; }
+.steerbar { width: 85%; height: 1.6em; border-radius: 999px; background: rgba(0,0,0,.35); position: relative; }
+.steerdot { position: absolute; top: -.3em; width: 2.2em; height: 2.2em; margin-left: -1.1em; left: 50%; border-radius: 50%; background: var(--mustard); border: 3px solid var(--ink); }
+.bigbtn { flex: none; height: 5.5em; font-size: 1.4em; }
+.livebig { font-family: var(--display); font-size: 1.6em; color: var(--mustard); }
+.rubpad { background: repeating-linear-gradient(45deg, rgba(255,255,255,.06) 0 14px, transparent 14px 28px); font-size: 1.3em; }
+.overlay { position: fixed; inset: 0; background: rgba(20,12,35,.9); display: grid; place-items: center; text-align: center; padding: 2em; z-index: 9; font-size: 1.2em; }
