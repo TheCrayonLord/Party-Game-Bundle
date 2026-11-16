@@ -6,7 +6,7 @@ export interface GameMeta {
   id: string; name: string; emoji: string; zone: string; blurb: string; min: number; max: number;
   /** Players beyond `max` can't play; games with fewer than `min` are closed. */
 }
-export interface Score { id: string; score: number; label?: string }
+export interface Score { id: string; score: number; label?: string; /** Overrides the usual by-placement prize tickets (used by team games). */ tickets?: number }
 export interface GameResult { scores: Score[]; headline?: string; coop?: boolean }
 export interface GameDef { meta: GameMeta; run(ctx: Ctx): Promise<GameResult> }
 

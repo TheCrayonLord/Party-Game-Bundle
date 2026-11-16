@@ -108,3 +108,20 @@ body.host { font-size: clamp(14px, 1.5vw, 26px); }
 .fake-side { align-items: flex-start; max-width: 18em; }
 .fake-turn { font-family: var(--display); font-size: 1.6em; color: var(--mustard); }
 .fake-queue { display: flex; flex-direction: column; gap: .3em; align-items: flex-start; }
+
+/* Heist Crew + Dungeon Vote */
+.heist-stage, .dv-stage { height: 100%; display: flex; flex-direction: column; padding: .8em 1.2em; gap: .6em; }
+.heist-top, .dv-top { display: flex; align-items: center; gap: 1.5em; font-size: 1.6em; }
+.heist-locks { display: flex; gap: .3em; flex: 1; }
+.heist-lock { filter: grayscale(1); opacity: .5; }
+.heist-lock.open { filter: none; opacity: 1; }
+.heist-time { font-family: var(--display); color: var(--mustard); }
+.heist-time.low { color: #ff6b4a; }
+.heist-main, .dv-main { flex: 1; justify-content: center; text-align: center; min-height: 0; }
+.heist-emoji, .dv-emoji { font-size: 5em; line-height: 1; }
+.dv-hearts { flex: 1; letter-spacing: .1em; }
+.dv-prog { font-family: var(--display); color: var(--mustard); }
+.dv-hurt { background: #f2b3a0; }
+.dv-main .answer { max-width: 22em; }
+.shake { animation: shake .4s; }
+@keyframes shake { 25% { transform: translateX(-.6em); } 50% { transform: translateX(.6em); } 75% { transform: translateX(-.3em); } }

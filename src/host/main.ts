@@ -123,7 +123,7 @@ function results(game: GameDef, r: GameResult, players: Player[]): Promise<void>
   let rank = 0;
   const list = rows.map((row, i) => {
     if (i === 0 || (row.s?.score ?? -1e9) !== (rows[i - 1].s?.score ?? -1e9)) rank = i;
-    const won = TICKETS[Math.min(rank, TICKETS.length - 1)];
+    const won = row.s?.tickets ?? TICKETS[Math.min(rank, TICKETS.length - 1)];
     row.p.tickets += won;
     room.welcome(row.p);
     return h('div.result-row', { style: { animationDelay: `${i * 0.12}s` } },

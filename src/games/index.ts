@@ -5,5 +5,8 @@ import { sketch } from './sketch';
 import { fakeartist } from './fakeartist';
 import { fib } from './fib';
 import { punchline } from './punchline';
+import { heist } from './heist';
+import { dungeon } from './dungeon';
 
-export const GAMES: GameDef[] = [tiltkart, snail, sketch, fakeartist, fib, punchline];
+/** Every attraction in the park, in the order they appear on the menu. */
+export const GAMES: GameDef[] = [tiltkart, snail, sketch, fakeartist, fib, punchline, heist, dungeon];
