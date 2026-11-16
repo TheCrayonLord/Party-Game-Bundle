@@ -1,6 +1,6 @@
 // The controller kit: every kind of phone screen the games can ask for.
 import type { Stroke, View } from '../core/types';
-import { clamp, drawStrokes, h } from '../core/util';
+import { clamp, drawStrokes, h, strokeCanvas } from '../core/util';
 
 type Send = (d: any) => void;
 let cleanup: (() => void)[] = [];
@@ -41,7 +41,7 @@ function build(v: View, send: Send, color: string, root: HTMLElement): HTMLEleme
       const count = h('div.count', `0/${max}`);
       const btn = h<'button'>('button.btn', { disabled: true, onclick: () => { const t = input.value.trim(); if (t) { btn.disabled = true; send({ id: v.id, v: t }); } } }, v.button || 'Send');
       input.oninput = () => { count.textContent = `${input.value.length}/${max}`; btn.disabled = !input.value.trim(); };
-      return [h('h2', v.prompt), h('p.sub', v.sub || ''), input, count, btn];
+      return [h('h2', v.prompt), h('p.sub', v.sub || ''), ...(v.image ? [h('div.drawwrap', strokeCanvas(v.image, 600))] : []), input, count, btn];
     }
 
     case 'choice': {

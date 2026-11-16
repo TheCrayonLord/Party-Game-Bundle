@@ -97,3 +97,14 @@ body.host { font-size: clamp(14px, 1.5vw, 26px); }
 @keyframes flick { 30% { transform: translateY(-1em) rotate(-40deg); } }
 .snail-zz { font-size: .6em; position: absolute; top: -.6em; left: 1.2em; }
 .snail-flag { position: absolute; right: -1.9em; bottom: 0; font-size: 1.4em; }
+
+/* drawing games */
+.sketch-chain { flex-wrap: nowrap; overflow-x: auto; justify-content: flex-start; width: 100%; padding-bottom: .5em; align-items: center; }
+.sketch-link { display: flex; flex-direction: column; align-items: center; gap: .3em; flex: none; animation: pop .35s; }
+.sketch-link .answer { max-width: 11em; font-size: 1.1em; }
+.sketch-link canvas { width: 13em; height: 13em; }
+.fake-stage { height: 100%; display: flex; gap: 1.5em; padding: 1em; align-items: center; justify-content: center; }
+.fake-stage canvas { height: 92%; aspect-ratio: 1; width: auto; }
+.fake-side { align-items: flex-start; max-width: 18em; }
+.fake-turn { font-family: var(--display); font-size: 1.6em; color: var(--mustard); }
+.fake-queue { display: flex; flex-direction: column; gap: .3em; align-items: flex-start; }

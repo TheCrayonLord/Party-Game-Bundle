@@ -10,7 +10,7 @@ export interface Option { id: string; label: string }
  */
 export type View = { key: string; live?: Record<string, string> } & (
   | { type: 'wait'; title: string; text?: string; emoji?: string }
-  | { type: 'text'; id: string; prompt: string; sub?: string; placeholder?: string; maxLen?: number; button?: string }
+  | { type: 'text'; id: string; prompt: string; sub?: string; placeholder?: string; maxLen?: number; button?: string; image?: Stroke[] }
   | { type: 'choice'; id: string; prompt: string; sub?: string; options: Option[] }
   | { type: 'draw'; id: string; prompt: string; sub?: string; color?: string; oneStroke?: boolean; base?: Stroke[] }
   | { type: 'info'; id: string; title: string; lines: string[]; buttons?: Option[]; input?: { placeholder: string; maxLen: number } }

@@ -138,7 +138,7 @@ export class Ctx {
         }
         const v = q[i];
         this.view(p, v);
-        if (p.bot) this.sleep(1.2 + Math.random() * 3).then(() => { if (!finished) take(p, { id: (v as any).id, v: opts.bot ? opts.bot(p, v) : botAnswer(v) }); }, () => {});
+        if (p.bot) this.sleep(1.2 + Math.random() * 3).then(() => { if (!finished) take(p, { id: (v as any).id, v: opts.bot?.(p, v) ?? botAnswer(v) }); }, () => {});
       };
       const take = (p: Player, d: any) => {
         const q = queues.get(p.id); if (!q) return;
