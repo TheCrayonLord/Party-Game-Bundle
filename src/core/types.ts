@@ -14,7 +14,10 @@ export type View = { key: string; live?: Record<string, string> } & (
   | { type: 'choice'; id: string; prompt: string; sub?: string; options: Option[] }
   | { type: 'draw'; id: string; prompt: string; sub?: string; color?: string; oneStroke?: boolean; base?: Stroke[] }
   | { type: 'info'; id: string; title: string; lines: string[]; buttons?: Option[]; input?: { placeholder: string; maxLen: number } }
-  | { type: 'tilt'; buttons?: Option[] }
+  /** Tilt controller. `pitch` adds a second (forward/back) axis; `swipe` adds a swipe-up zone that sends {btn: id}. */
+  | { type: 'tilt'; buttons?: Option[]; pitch?: boolean; swipe?: Option }
+  /** The hot potato: flick left, right or up to throw it. Sends {flick}. */
+  | { type: 'bomb'; title: string }
   | { type: 'rub' }
 );
 

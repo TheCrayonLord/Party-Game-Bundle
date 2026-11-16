@@ -65,6 +65,7 @@ function build(v: View, send: Send, color: string, root: HTMLElement): HTMLEleme
     }
 
     case 'tilt': return tiltPad(v, send);
+    case 'bomb': return bombPad(v, send);
     case 'rub': return rubPad(send);
   }
 }
@@ -116,34 +117,74 @@ function drawPad(v: Extract<View, { type: 'draw' }>, send: Send, own: string): H
   return [h('h2', v.prompt), h('p.sub', v.sub || ''), h('div.drawwrap', canvas, tools), ...(v.oneStroke ? [] : [done])];
 }
 
-/** How far "downhill" the screen leans to the right, -1..1, whichever way the phone is held. */
-function leanFromOrientation(e: DeviceOrientationEvent): number | null {
+/** Which way gravity pulls across the screen: x = toward the right edge, y = toward the top edge (each about -1..1). */
+function lean(e: DeviceOrientationEvent): [number, number] | null {
   if (e.beta == null || e.gamma == null) return null;
   const b = (e.beta * Math.PI) / 180, g = (e.gamma * Math.PI) / 180;
   const gx = Math.sin(g) * Math.cos(b), gy = -Math.sin(b); // gravity along the phone's own x and y edges
   const angle = (screen.orientation?.angle ?? (window as any).orientation ?? 0) as number;
-  const sx = angle === 90 ? -gy : angle === 270 || angle === -90 ? gy : angle === 180 ? -gx : gx;
-  return clamp(sx * 2.2, -1, 1); // full lock at roughly 27 degrees
+  if (angle === 90) return [-gy, gx];
+  if (angle === 270 || angle === -90) return [gy, -gx];
+  if (angle === 180) return [-gx, -gy];
+  return [gx, gy];
 }
 
 function tiltPad(v: Extract<View, { type: 'tilt' }>, send: Send): HTMLElement[] {
   const dot = h('div.steerdot');
-  const hint = h('p', 'Tilt your phone to steer');
-  const pad = h('div.tiltpad', h('div.livebig', { 'data-live': 'big' }), h('div.steerbar', dot), hint, h('p.sub', { 'data-live': 'info' }));
-  let tilt = 0, touch: number | null = null, sentVal = 99, gotMotion = false;
-  on('deviceorientation', (e) => { const l = leanFromOrientation(e); if (l != null) { gotMotion = true; tilt = l; } });
-  const fromTouch = (e: PointerEvent) => { const r = pad.getBoundingClientRect(); touch = clamp(((e.clientX - r.left) / r.width - 0.5) * 2.4, -1, 1); };
-  pad.onpointerdown = (e) => { pad.setPointerCapture(e.pointerId); fromTouch(e); };
-  pad.onpointermove = (e) => { if (touch != null) fromTouch(e); };
-  pad.onpointerup = pad.onpointercancel = () => { touch = null; };
-  setTimeout(() => { if (!gotMotion) hint.textContent = 'Drag left and right here to steer'; }, 1500);
-  every(50, () => {
-    const val = Math.round((touch ?? tilt) * 100) / 100;
-    dot.style.left = `${50 + val * 50}%`;
-    if (Math.abs(val - sentVal) >= 0.02) { sentVal = val; send({ tilt: val }); }
+  const hint = h('p', v.pitch ? 'Tilt left/right to bank, forward/back to dive and climb' : 'Tilt your phone to steer');
+  const pad = h('div.tiltpad' + (v.pitch ? '.two' : ''), h('div.livebig', { 'data-live': 'big' }), v.pitch ? dot : h('div.steerbar', dot), hint, h('p.sub', { 'data-live': 'info' }));
+  let tx = 0, ty = 0, touch: [number, number] | null = null, sent = '', gotMotion = false, level: number | null = null;
+  on('deviceorientation', (e) => {
+    const l = lean(e); if (!l) return;
+    gotMotion = true;
+    tx = clamp(l[0] * 2.2, -1, 1);             // full lock at roughly 27 degrees
+    level ??= l[1];                            // however the phone is held when the screen appears counts as level
+    ty = clamp((level - l[1]) * 2.6, -1, 1);   // tipping the top edge up = climb
   });
-  const btns = (v.buttons || []).map((b) => h('button.btn.bigbtn', { 'data-live': 'btn-' + b.id, onpointerdown: (e: Event) => { e.preventDefault(); send({ btn: b.id }); } }, b.label));
-  return [pad, ...btns];
+  const fromTouch = (e: PointerEvent) => {
+    const r = pad.getBoundingClientRect();
+    touch = [clamp(((e.clientX - r.left) / r.width - 0.5) * 2.4, -1, 1), clamp((0.5 - (e.clientY - r.top) / r.height) * 2.4, -1, 1)];
+  };
+  pad.onpointerdown = (e) => { pad.setPointerCapture(e.pointerId); fromTouch(e); };
+  pad.onpointermove = (e) => { if (touch) fromTouch(e); };
+  pad.onpointerup = pad.onpointercancel = () => { touch = null; };
+  setTimeout(() => { if (!gotMotion) hint.textContent = v.pitch ? 'Drag around here to fly' : 'Drag left and right here to steer'; }, 1500);
+  every(50, () => {
+    const x = Math.round((touch ? touch[0] : tx) * 50) / 50, y = Math.round((touch ? touch[1] : ty) * 50) / 50;
+    dot.style.left = `${50 + x * 50}%`;
+    if (v.pitch) dot.style.top = `${50 - y * 42}%`;
+    const msg = v.pitch ? { tilt: x, pitch: y } : { tilt: x };
+    const key = JSON.stringify(msg);
+    if (key !== sent) { sent = key; send(msg); }
+  });
+  const out: HTMLElement[] = [pad];
+  if (v.swipe) {
+    const sw = v.swipe;
+    const zone = h('div.swipezone', h('div.swipe-arrow', '⬆'), h('div', { 'data-live': 'btn-' + sw.id }, sw.label));
+    let start: [number, number, number] | null = null;
+    zone.onpointerdown = (e) => { zone.setPointerCapture(e.pointerId); start = [e.clientX, e.clientY, performance.now()]; };
+    zone.onpointerup = (e) => { if (start && start[1] - e.clientY > 40 && performance.now() - start[2] < 700) send({ btn: sw.id }); start = null; };
+    out.push(zone);
+  }
+  for (const b of v.buttons || []) out.push(h('button.btn.bigbtn', { 'data-live': 'btn-' + b.id, onpointerdown: (e: Event) => { e.preventDefault(); send({ btn: b.id }); } }, b.label));
+  return out;
+}
+
+function bombPad(v: Extract<View, { type: 'bomb' }>, send: Send): HTMLElement[] {
+  const bomb = h('div.bomb', '💣');
+  const pad = h('div.bombpad', h('h2', v.title), bomb, h('p', 'FLICK it away! ⬅ ➡ pass to a neighbour · ⬆ throw it across'));
+  let start: [number, number] | null = null;
+  pad.onpointerdown = (e) => { pad.setPointerCapture(e.pointerId); start = [e.clientX, e.clientY]; };
+  pad.onpointermove = (e) => { if (start) bomb.style.transform = `translate(${e.clientX - start[0]}px, ${Math.min(0, e.clientY - start[1])}px)`; };
+  pad.onpointerup = pad.onpointercancel = (e) => {
+    if (!start) return;
+    const dx = e.clientX - start[0], dy = e.clientY - start[1]; start = null;
+    bomb.style.transform = '';
+    if (Math.hypot(dx, dy) < 45) return;
+    send({ flick: -dy > Math.abs(dx) ? 'up' : dx < 0 ? 'left' : 'right' });
+  };
+  try { navigator.vibrate?.([120, 60, 120]); } catch { /* not supported */ }
+  return [pad];
 }
 
 function rubPad(send: Send): HTMLElement[] {
