@@ -365,7 +365,7 @@ export async function runRace(ctx: Ctx, cfg: RaceConfig): Promise<Score[]> {
     if (boat && k.spin <= 0) {
       for (const w of waves) if (crossed(w.i)) { if (fx * T[w.i].x + fz * T[w.i].z > 0.93) k.boost = Math.max(k.boost, 0.9); else k.slow = 1; }
       for (const c of currents) if (best >= c.from && best < c.to) { k.vx += NRM[best].x * c.dir * 9 * dt; k.vz += NRM[best].z * c.dir * 9 * dt; }
-      for (const pl of pools) if (k.immune <= 0 && (pl.x - k.x) ** 2 + (pl.z - k.z) ** 2 < 16) { k.spin = 0.9; k.immune = 6; }
+      for (const pl of pools) if (k.immune <= 0 && (pl.x - k.x) ** 2 + (pl.z - k.z) ** 2 < 16) { k.spin = 0.9; k.immune = 6; ctx.comment('crash', k.p); }
       for (const b of buoys) { const dx = k.x - b.x, dz = k.z - b.z, d = Math.hypot(dx, dz); if (d < 2.6 && d > 0.01) { k.x = b.x + (dx / d) * 2.6; k.z = b.z + (dz / d) * 2.6; k.vx *= 0.6; k.vz *= 0.6; } }
     }
     k.idx = best;
@@ -397,7 +397,7 @@ export async function runRace(ctx: Ctx, cfg: RaceConfig): Promise<Score[]> {
       k.item = Math.random() < 0.25 + behind * 0.4 ? 'boost' : Math.random() < 0.5 ? 'zap' : 'oil';
       k.useAt = clock + 0.5 + Math.random() * 3;
     }
-    for (const o of oils) if ((o.owner !== k || o.age > 1) && k.spin <= 0 && (o.m.position.x - k.x) ** 2 + (o.m.position.z - k.z) ** 2 < 7) { k.spin = 1.1; k.boost = 0; o.age = 99; }
+    for (const o of oils) if ((o.owner !== k || o.age > 1) && k.spin <= 0 && (o.m.position.x - k.x) ** 2 + (o.m.position.z - k.z) ** 2 < 7) { k.spin = 1.1; k.boost = 0; o.age = 99; ctx.comment('crash', k.p); }
   };
 
   await new Promise<void>((resolve) => {
@@ -449,6 +449,7 @@ export async function runRace(ctx: Ctx, cfg: RaceConfig): Promise<Score[]> {
 
       if (t - lastHud > 0.25) {
         lastHud = t;
+        if (clock > 0) ctx.standings(order.filter((k) => k.finish == null).map((k) => k.p));
         board.replaceChildren(...order.map((k, i) => h('div.kart-row', h('span.kart-pos', String(i + 1)), h('span.badge', { style: { background: k.p.color } }, `${k.p.shape} ${k.p.name}`),
           h('span', k.finish != null ? '🏁' : `${k.item ? ITEM_LABEL[k.item].split(' ')[0] : ''} L${clamp(k.lap + 1, 1, LAPS)}`))));
         order.forEach((k, i) => {

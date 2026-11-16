@@ -66,16 +66,45 @@ body.host { font-size: clamp(14px, 1.5vw, 26px); }
 .intro-emoji { font-size: 7em; animation: pop .5s cubic-bezier(.3,1.6,.5,1); }
 .next-hint { position: absolute; right: 1em; bottom: 1em; background: var(--mustard); color: var(--ink); padding: .4em .9em; border-radius: 999px; font-weight: 700; cursor: pointer; z-index: 5; }
 
-.results { height: 100%; display: flex; flex-direction: column; align-items: center; gap: .8em; padding: 1.2em; overflow: auto; }
-.results .big { font-size: 2.2em; text-align: center; }
-.result-list { display: flex; flex-direction: column; gap: .35em; width: min(46em, 96%); }
+.results { height: 100%; display: flex; flex-direction: column; align-items: center; gap: .6em; padding: 1em; overflow: auto; }
+.results .big { font-size: 2em; text-align: center; }
+/* podium: steps rise and their players drop in, third place first */
+.podium { display: flex; align-items: flex-end; justify-content: center; gap: .4em; min-height: 13em; }
+.pod-step { display: flex; flex-direction: column; align-items: center; min-width: 9em; opacity: 0; transform: translateY(2em); transition: opacity .4s, transform .5s cubic-bezier(.3,1.5,.5,1); }
+.pod-step.show { opacity: 1; transform: none; }
+.pod-figs { display: flex; gap: .3em; flex-wrap: wrap; justify-content: center; max-width: 16em; }
+.pod-fig { display: flex; flex-direction: column; align-items: center; }
+.pod-av { width: 2em; height: 2em; border-radius: 50%; display: grid; place-items: center; font-size: 1.7em; border: .1em solid var(--ink); box-shadow: 0 .12em 0 rgba(0,0,0,.35); }
+.pod-step.r1 .pod-av { font-size: 2.3em; }
+.pod-step.r1.show .pod-av { animation: hop .6s ease-in-out 3 alternate; }
+@keyframes hop { to { transform: translateY(-.35em) rotate(6deg); } }
+.pod-name { font-weight: 800; font-size: .85em; margin: .15em 0; }
+.pod-block { width: 100%; background: var(--cream); color: var(--red); font-family: var(--display); font-size: 1.6em; text-align: center; border: .1em solid var(--ink); border-bottom: none; border-radius: .3em .3em 0 0; background-image: repeating-linear-gradient(90deg, rgba(217,72,43,.12) 0 .5em, transparent .5em 1em); }
+.pod-step.r1 .pod-block { height: 4.2em; padding-top: .3em; background-color: var(--mustard); }
+.pod-step.r2 .pod-block { height: 2.9em; padding-top: .2em; }
+.pod-step.r3 .pod-block { height: 1.9em; }
+.pod-step:not(:has(.pod-fig)) { visibility: hidden; }
+.result-list { display: flex; flex-direction: column; gap: .3em; width: min(48em, 96%); }
 .result-row .badge { justify-self: start; }
-.result-row { display: grid; grid-template-columns: 3em 1fr auto 6em 6em; gap: .8em; align-items: center; background: rgba(0,0,0,.28); border-radius: .6em; padding: .35em .8em; animation: slide .4s both; }
+.result-row { display: grid; grid-template-columns: 3em 1fr auto 5.5em 5.5em 2.6em; gap: .7em; align-items: center; background: rgba(0,0,0,.28); border-radius: .6em; padding: .28em .8em; font-size: .9em; opacity: 0; }
+.results.reveal .result-row { animation: slide .4s both; opacity: 1; }
+.results > .mascot, .results > .btn { opacity: 0; transition: opacity .5s .6s; }
+.results.reveal > .mascot, .results.reveal > .btn { opacity: 1; }
 @keyframes slide { from { transform: translateX(-2em); opacity: 0; } }
 .result-rank { font-family: var(--display); font-size: 1.3em; color: var(--mustard); }
 .result-label { opacity: .9; }
 .result-tix { color: var(--mustard); font-weight: 800; text-align: right; }
 .result-total { text-align: right; font-size: .8em; opacity: .8; }
+.result-list.many .result-row { font-size: .7em; padding: .12em .8em; }
+.result-list.many { gap: .2em; }
+.result-move { font-size: .8em; text-align: right; opacity: .7; }
+.result-move.up { color: #8be28b; opacity: 1; } .result-move.down { color: #ff9c8a; opacity: 1; }
+
+/* mascot remarks during a game: bottom-left, out of the way */
+.game { position: relative; }
+.commentary { position: absolute; left: .8em; bottom: .8em; z-index: 6; font-size: .8em; max-width: 26em; opacity: 0; pointer-events: none; }
+.commentary.show { animation: remark 5.5s both; }
+@keyframes remark { 0% { opacity: 0; transform: translateY(1em); } 8% { opacity: 1; transform: none; } 85% { opacity: 1; } 100% { opacity: 0; } }
 
 /* shared pieces used by several games */
 .panel { background: var(--cream); color: var(--ink); border-radius: .8em; padding: .8em 1.2em; border: .2em solid var(--ink); box-shadow: 0 .35em 0 rgba(0,0,0,.35); }

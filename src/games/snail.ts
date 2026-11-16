@@ -60,7 +60,7 @@ export const snail: GameDef = {
             else s.drowsy = Math.max(0, s.drowsy - dt * 0.25);
             if (s.drowsy >= 1) { s.asleep = 2.5; }
             s.pos += (Math.min(s.rate, CAP) / CAP) * dt * 0.052 * (1 - s.drowsy * 0.5);
-            if (look > 0 && look < 1.7 && s.moved > 0 && s.rate > 60) { s.pos = Math.max(0, s.pos - 0.1); s.asleep = 1.2; s.el.classList.add('flicked'); setTimeout(() => s.el.classList.remove('flicked'), 600); }
+            if (look > 0 && look < 1.7 && s.moved > 0 && s.rate > 60) { s.pos = Math.max(0, s.pos - 0.1); s.asleep = 1.2; ctx.comment('crash', s.p); s.el.classList.add('flicked'); setTimeout(() => s.el.classList.remove('flicked'), 600); }
           }
           s.rate *= Math.pow(0.02, dt);   // no fresh rubbing: glide to a stop
           if (s.pos >= 1) { s.pos = 1; s.finish = clock; finished++; if (finished === 1) ctx.timer(12); }
@@ -70,6 +70,7 @@ export const snail: GameDef = {
           const info = s.finish != null ? '🏁 Finished!' : s.asleep > 0 ? '💤 Asleep! Wait…' : look > 0 ? '🚨 FREEZE!' : s.drowsy > 0.45 ? '🥱 Too frantic! Slow down.' : 'Rub here to crawl';
           if (info !== s.info) { s.info = info; ctx.live(s.p, { info, big: s.asleep > 0 ? '😴' : '🐌' }); }
         }
+        ctx.standings([...snails].sort((a, b) => b.pos - a.pos).map((s) => s.p));
         const first = snails.find((s) => s.finish != null)?.finish;
         if (finished === snails.length || (first != null && clock > first + 12) || clock > 75) { stop(); resolve(); }
       });

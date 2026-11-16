@@ -48,7 +48,7 @@ const autoplay = async (p, i) => {
     try {
       await p.evaluate(async (i) => {
         const s = document.querySelector('.screen'); if (!s) return;
-        if (/Pick an attraction|prize tickets/.test(s.querySelector('h2')?.textContent || '')) return; // leave menus alone
+        if (/Pick an attraction/.test(s.querySelector('h2')?.textContent || '') || [...s.querySelectorAll('.opt')].some((o) => o.textContent === 'Back to the park')) return; // leave menus and the results screen alone
         const ta = s.querySelector('textarea');
         if (ta && !ta.disabled) { ta.value = 'answer ' + i + ' ' + Math.floor(Math.random() * 1000); ta.dispatchEvent(new Event('input')); s.querySelector('.btn').click(); return; }
         const canvas = s.querySelector('canvas');

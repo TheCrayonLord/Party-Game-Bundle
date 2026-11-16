@@ -116,6 +116,7 @@ export const skyslalom: GameDef = {
         if (t - lastHud > 0.3) {
           lastHud = t;
           const order = [...planes].sort((a, b) => b.score - a.score), left = rings.filter((r) => !r.done).length;
+          if (clock > 4) ctx.standings(order.map((pl) => pl.p));
           board.replaceChildren(h('div.kart-row', h('span'), h('span', `Hoops left: ${left}`), h('span')), ...order.map((pl, i) => h('div.kart-row', h('span.kart-pos', String(i + 1)), h('span.badge', { style: { background: pl.p.color } }, `${pl.p.shape} ${pl.p.name}`), h('span', `${pl.score}${pl.streak > 1 ? ` 🔥${pl.streak}` : ''}`))));
           for (const pl of planes) { const big = `${pl.score} pts${pl.streak > 1 ? ` · 🔥 ${pl.streak} in a row` : ''}`; if (big !== pl.live) { pl.live = big; ctx.live(pl.p, { big }); } }
         }

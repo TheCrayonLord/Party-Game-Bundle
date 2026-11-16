@@ -1,6 +1,7 @@
 import type { Stroke, View } from '../core/types';
 import { SPEED, h, pick, rand } from '../core/util';
 import type { Player, Room } from './room';
+import { bubble, line, mascot, type Moment } from './mascot';
 
 export interface GameMeta {
   id: string; name: string; emoji: string; zone: string; blurb: string; min: number; max: number;
@@ -43,6 +44,11 @@ export class Ctx {
   private cleanups: (() => void)[] = [];
   private timerStop: (() => void) | null = null;
   private keyN = 0;
+  private talk = h('div.commentary');
+  private talkAt = -1e9;
+  private began = performance.now();
+  private leader = '';
+  private tail = { id: '', since: 0, said: '' };
 
   /** How good the bots are: 0 easy, 1 normal, 2 hard. */
   botLevel: 0 | 1 | 2 = 1;
@@ -51,7 +57,25 @@ export class Ctx {
     this.hudWait = h('div.hud-wait');
     this.hudTimer = h('div.hud-timer');
     this.stage = h('div.stage');
-    root.replaceChildren(h('div.game', h('div.hud', h('div.hud-title', `${meta.emoji} ${meta.name}`), this.hudWait, this.hudTimer), this.stage));
+    root.replaceChildren(h('div.game', h('div.hud', h('div.hud-title', `${meta.emoji} ${meta.name}`), this.hudWait, this.hudTimer), this.stage, this.talk));
+  }
+
+  // ---- mascot commentary ----
+  /** Has the mascot remark on something a player just did. Remarks are spaced out so they never pile up. */
+  comment(kind: Moment, p: Player, urgent = false) {
+    const now = performance.now();
+    if (!this.alive || now - this.talkAt < (urgent ? 3500 : 9000)) return;
+    this.talkAt = now;
+    this.talk.replaceChildren(bubble(line(mascot.during[kind], { name: p.name })));
+    this.talk.classList.remove('show'); void this.talk.offsetWidth; this.talk.classList.add('show');
+  }
+  /** Games call this with the current order, best first; the mascot notices lead changes and whoever is stuck at the back. */
+  standings(order: Player[]) {
+    if (order.length < 2) return;
+    const now = performance.now(), first = order[0], last = order[order.length - 1];
+    if (first.id !== this.leader) { const had = this.leader; this.leader = first.id; if (had && now - this.began > 6000) this.comment('lead', first); }
+    if (last.id !== this.tail.id) this.tail = { id: last.id, since: now, said: this.tail.said };
+    else if (now - this.tail.since > 20000 && this.tail.said !== last.id) { this.tail.said = last.id; this.comment('last', last); }
   }
 
   get vip() { return this.room.vip; }

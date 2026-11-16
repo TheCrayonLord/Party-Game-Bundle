@@ -56,6 +56,7 @@ export const fib: GameDef = {
           h('p.pts', o.truth ? (fooled.length ? `+1000 for spotting it` : 'Nobody found the truth!') : `Fooled ${fooled.length}: +${500 * fooled.length}`)));
         await ctx.sleep(o.truth ? 4.5 : 3.2);
       }
+      ctx.standings([...P].sort((a, b) => score.get(b.id)! - score.get(a.id)!));
     }
     return { scores: P.map((p) => ({ id: p.id, score: score.get(p.id)! })) };
   },

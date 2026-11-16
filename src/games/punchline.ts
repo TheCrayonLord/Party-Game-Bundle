@@ -42,6 +42,7 @@ export const punchline: GameDef = {
         add(who.id, pts);
         card.append(h('div.by', 'by ', badge(who)), h('div.who', ...v.map((id) => badge(ctx.by(id)))), h('div.pts', `+${pts}${v.length === total && total > 1 ? ' CLEAN SWEEP!' : ''}`));
       }
+      ctx.standings([...P].sort((a, b) => score.get(b.id)! - score.get(a.id)!));
       await ctx.sleep(4.5);
     }
 

@@ -2,11 +2,11 @@ import qrcode from 'qrcode-generator';
 import '../theme.css';
 import './host.css';
 import { createHost, type HostNet } from '../core/transport';
-import { h, ordinal, qs } from '../core/util';
+import { SPEED, h, ordinal, qs } from '../core/util';
 import { Room, MAX_PLAYERS, type Player } from './room';
 import { Cancelled, Ctx, type GameDef, type GameResult } from './ctx';
 import { GAMES } from '../games';
-import { nextMascot, say } from './mascot';
+import { bubble, line, mascot, nextMascot, say } from './mascot';
 import { Park } from './park';
 
 const app = document.getElementById('app')!;
@@ -160,28 +160,69 @@ async function start(game: GameDef | undefined) {
 
 function quitGame() { ctx?.destroy(); ctx = null; lobby(); }
 
+const streaks = new Map<string, number>();     // wins in a row, per player, for the mascot to gloat about
+
+/** The placements screen: a podium revealed third to first, then the full table with prize tickets. */
 function results(game: GameDef, r: GameResult, players: Player[]): Promise<void> {
   mode = 'results';
-  const rows = players.map((p) => ({ p, s: r.scores.find((x) => x.id === p.id) })).sort((a, b) => (b.s?.score ?? -1e9) - (a.s?.score ?? -1e9));
-  let rank = 0;
-  const list = rows.map((row, i) => {
-    if (i === 0 || (row.s?.score ?? -1e9) !== (rows[i - 1].s?.score ?? -1e9)) rank = i;
-    const won = row.s?.tickets ?? TICKETS[Math.min(rank, TICKETS.length - 1)];
-    row.p.tickets += won;
+  const overall = () => new Map([...room.players].sort((a, b) => b.tickets - a.tickets).map((p, i) => [p.id, i]));
+  const before = overall();
+  const rows = players.map((p) => ({ p, s: r.scores.find((x) => x.id === p.id), rank: 0, won: 0 })).sort((a, b) => (b.s?.score ?? -1e9) - (a.s?.score ?? -1e9));
+  rows.forEach((row, i) => {
+    row.rank = i > 0 && (row.s?.score ?? -1e9) === (rows[i - 1].s?.score ?? -1e9) ? rows[i - 1].rank : i;
+    row.won = row.s?.tickets ?? TICKETS[Math.min(row.rank, TICKETS.length - 1)];
+    row.p.tickets += row.won;
     room.welcome(row.p);
-    return h('div.result-row', { style: { animationDelay: `${i * 0.12}s` } },
-      h('span.result-rank', r.coop ? '' : ordinal(rank + 1)),
+  });
+  const after = overall();
+  // Team games and hidden-role games set their own ticket amounts; they get a banner instead of a podium.
+  const team = !!r.coop || rows.every((row) => row.s?.tickets != null);
+  for (const row of rows) streaks.set(row.p.id, !team && row.rank === 0 ? (streaks.get(row.p.id) || 0) + 1 : 0);
+
+  // What the mascot has to say about it.
+  const champ = rows[0].p, loser = rows[rows.length - 1].p, standing = [...room.players].sort((a, b) => b.tickets - a.tickets);
+  let remark: string;
+  if (r.coop) remark = line(mascot.after[(rows[0].s?.score ?? 0) > 0 ? 'teamWin' : 'teamLose']);
+  else if (team) remark = line(mascot.results);
+  else if ((streaks.get(champ.id) || 0) >= 2) remark = line(mascot.after.streak, { name: champ.name, n: streaks.get(champ.id)! });
+  else if (standing.length > 1 && standing[0].tickets - standing[1].tickets <= 30 && Math.random() < 0.4) remark = line(mascot.after.rivalry, { name: standing[0].name, other: standing[1].name });
+  else if (rows.length > 2 && loser !== champ && Math.random() < 0.3) remark = line(mascot.after.loser, { name: loser.name });
+  else remark = line(mascot.after.win, { name: champ.name });
+
+  const figure = (p: Player) => h('div.pod-fig', h('div.pod-av', { style: { background: p.color } }, p.avatar), h('div.pod-name', p.name));
+  const step = (rank: number) => h(`div.pod-step.r${rank + 1}`, h('div.pod-figs', ...rows.filter((x) => x.rank === rank).map((x) => figure(x.p))), h('div.pod-block', ordinal(rank + 1)));
+  const podium = team ? null : h('div.podium', step(1), step(0), step(2));
+  const table = h('div.result-list' + (rows.length > 8 ? '.many' : ''), ...rows.map((row, i) => {
+    const move = (before.get(row.p.id) ?? 0) - (after.get(row.p.id) ?? 0);
+    return h('div.result-row', { style: { animationDelay: `${i * 0.1}s` } },
+      h('span.result-rank', team ? '' : ordinal(row.rank + 1)),
       h('span.badge', { style: { background: row.p.color } }, `${row.p.avatar} ${row.p.name}`),
       h('span.result-label', row.s?.label ?? (row.s ? String(row.s.score) : '—')),
-      h('span.result-tix', `+${won} 🎟️`), h('span.result-total', `${row.p.tickets} total`));
-  });
-  app.replaceChildren(h('div.results', h('h1.big', r.headline || `${game.meta.emoji} ${game.meta.name}: results`), h('div.result-list', ...list), say('results'),
-    h('button.btn', { onclick: () => resultsDone?.() }, 'Back to the park')));
-  for (const p of players) room.setView(p, p.vip
-    ? { type: 'choice', key: 'results-vip', id: 'back', prompt: `You have ${p.tickets} prize tickets`, options: [{ id: 'go', label: 'Back to the park' }] }
-    : { type: 'wait', key: 'results', title: `${p.tickets} prize tickets`, text: 'Waiting for the host…', emoji: '🎟️' });
+      h('span.result-tix', `+${row.won} 🎟️`), h('span.result-total', `${row.p.tickets} total`),
+      h('span.result-move' + (move > 0 ? '.up' : move < 0 ? '.down' : ''), move > 0 ? `▲${move}` : move < 0 ? `▼${-move}` : '–'));
+  }));
+  const says = bubble(remark);
+  const screen = h('div.results' + (team ? '.team' : ''), h('h1.big', r.headline || `${game.meta.emoji} ${game.meta.name}`), podium, table, says,
+    h('button.btn', { onclick: () => resultsDone?.() }, 'Back to the park'));
+  app.replaceChildren(screen);
+  // Reveal: third, second, a pause, then first; after that the table and the mascot.
+  const timers: number[] = [];
+  const at = (sec: number, fn: () => void) => timers.push(window.setTimeout(fn, (sec * 1000) / SPEED));
+  if (podium) {
+    at(0.6, () => podium.querySelector('.r3')?.classList.add('show'));
+    at(1.8, () => podium.querySelector('.r2')?.classList.add('show'));
+    at(3.6, () => podium.querySelector('.r1')?.classList.add('show'));
+  }
+  at(podium ? 5 : 0.3, () => screen.classList.add('reveal'));
+
+  for (const row of rows) {
+    const title = team ? (row.s?.label ?? game.meta.name) : `You came ${ordinal(row.rank + 1)}`, text = `+${row.won} 🎟️ · ${row.p.tickets} total`;
+    room.setView(row.p, row.p.vip
+      ? { type: 'choice', key: 'results-vip', id: 'back', prompt: title, sub: text, options: [{ id: 'go', label: 'Back to the park' }] }
+      : { type: 'wait', key: 'results', title, text, emoji: !team && row.rank === 0 ? '🏆' : '🎟️' });
+  }
   return new Promise((resolve) => {
-    const t = setTimeout(() => resultsDone?.(), room.vip ? 60000 : 6000);
-    resultsDone = () => { clearTimeout(t); resultsDone = null; resolve(); };
+    const t = setTimeout(() => resultsDone?.(), room.vip ? 75000 : 14000 / SPEED);
+    resultsDone = () => { clearTimeout(t); timers.forEach(clearTimeout); resultsDone = null; resolve(); };
   });
 }

@@ -73,6 +73,7 @@ export const hotpotato: GameDef = {
       });
       off();
       const dead = holder;
+      ctx.comment('out', dead, true);
       alive = alive.filter((p) => p !== dead);
       alive.forEach((p) => add(p, 60));
       bombEl.textContent = '💥'; banner.textContent = `BOOM! ${dead.name} is out.`;
