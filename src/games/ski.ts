@@ -5,7 +5,7 @@ import { clamp, h, ordinal, pick, shuffle } from '../core/util';
 import type { Ctx, GameDef, Score } from '../host/ctx';
 import type { Player } from '../host/room';
 
-const LENGTH = 900;            // how far it is to the finish
+const LENGTH = 1500;            // how far it is to the finish
 const HALF = 22;               // half-width of the groomed piste
 const SLOPE = 0.22;            // drop per unit travelled
 const Y = (z: number) => z * SLOPE;      // the hill: forward is -z, and downhill
@@ -100,13 +100,13 @@ async function heat(ctx: Ctx, hill: Hill, racers: Player[]): Promise<Map<string,
   const solids: { x: number; z: number; r: number }[] = [];
   const gates: { x: number; z: number }[] = [];
   for (let z = -70; z > -LENGTH + 30; z -= 46) gates.push({ x: Math.sin(z * 0.021) * 12 + (rnd() - 0.5) * 5, z });
-  const ramps: { x: number; z: number }[] = [-210, -470, -720].map((z) => ({ x: (rnd() - 0.5) * 22, z }));
-  const ice: { x: number; z: number }[] = [-330, -600].map((z) => ({ x: (rnd() - 0.5) * 16, z }));
+  const ramps: { x: number; z: number }[] = [0.14, 0.32, 0.5, 0.68, 0.85].map((f) => ({ x: (rnd() - 0.5) * 22, z: -LENGTH * f }));
+  const ice: { x: number; z: number }[] = [0.24, 0.42, 0.6, 0.78].map((f) => ({ x: (rnd() - 0.5) * 16, z: -LENGTH * f }));
   const clearOf = (x: number, z: number) => gates.every((g) => Math.abs(g.z - z) > 9 || Math.abs(g.x - x) > 8) && ramps.every((r) => Math.abs(r.z - z) > 16 || Math.abs(r.x - x) > 7);
 
   const trees: [number, number, number][] = [];       // x, z, size
   for (let z = 60; z > -LENGTH - 200; z -= 5) for (const side of [-1, 1]) trees.push([side * (HALF + 4 + rnd() * 26), z + rnd() * 4, 0.8 + rnd() * 0.7]);   // forest either side
-  for (let i = 0; i < hill.trees; i++) { const x = (rnd() - 0.5) * (HALF * 2 - 4), z = -60 - rnd() * (LENGTH - 110); if (clearOf(x, z)) { trees.push([x, z, 0.9 + rnd() * 0.4]); solids.push({ x, z, r: 1.7 }); } }
+  for (let i = 0; i < hill.trees * 1.7; i++) { const x = (rnd() - 0.5) * (HALF * 2 - 4), z = -60 - rnd() * (LENGTH - 110); if (clearOf(x, z)) { trees.push([x, z, 0.9 + rnd() * 0.4]); solids.push({ x, z, r: 1.7 }); } }
   const dummy = new THREE.Object3D();
   const instanced = (geo: THREE.BufferGeometry, material: THREE.Material, list: [number, number, number][], lift: number) => {
     const m = new THREE.InstancedMesh(geo, material, list.length);
@@ -116,7 +116,7 @@ async function heat(ctx: Ctx, hill: Hill, racers: Player[]): Promise<Map<string,
   instanced(new THREE.ConeGeometry(2.4, 8, 6), mat('#1f4d45'), trees, 4.4);
   instanced(new THREE.ConeGeometry(1.5, 3, 6), mat('#f4f8fb'), trees, 7.6);
   const rocks: [number, number, number][] = [];
-  for (let i = 0; i < hill.rocks; i++) { const x = (rnd() - 0.5) * (HALF * 2 - 6), z = -90 - rnd() * (LENGTH - 150); if (clearOf(x, z)) { rocks.push([x, z, 0.8 + rnd() * 0.6]); solids.push({ x, z, r: 1.9 }); } }
+  for (let i = 0; i < hill.rocks * 1.7; i++) { const x = (rnd() - 0.5) * (HALF * 2 - 6), z = -90 - rnd() * (LENGTH - 150); if (clearOf(x, z)) { rocks.push([x, z, 0.8 + rnd() * 0.6]); solids.push({ x, z, r: 1.9 }); } }
   instanced(new THREE.DodecahedronGeometry(1.8, 0), mat('#7b7f8a'), rocks, 0.8);
 
   gates.forEach((g, i) => {      // a pair of flags to ski between
@@ -245,7 +245,7 @@ async function heat(ctx: Ctx, hill: Hill, racers: Player[]): Promise<Map<string,
         }
         if (first != null && !huds.dataset.t) { huds.dataset.t = '1'; ctx.timer(15); }
       }
-      if (skiers.every((s) => s.finish != null) || (first != null && clock > first + 15) || clock > 110) { stop(); resolve(); }
+      if (skiers.every((s) => s.finish != null) || (first != null && clock > first + 15) || clock > 150) { stop(); resolve(); }
     });
   });
   ctx.clearTimer();
