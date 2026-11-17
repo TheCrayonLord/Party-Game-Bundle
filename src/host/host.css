@@ -315,3 +315,5 @@ body.host { font-size: clamp(14px, 1.5vw, 26px); }
 .cheer-name { font-size: .6em; font-weight: 800; background: rgba(20,12,35,.7); border-radius: 999px; padding: 0 .5em; }
 @keyframes cheer { 0% { transform: translateY(20%) scale(.6); opacity: 0; } 15% { opacity: 1; transform: translateY(-40%) scale(1.1); } 100% { transform: translateY(-420%) scale(1); opacity: 0; } }
 .audience-note { font-size: .8em; opacity: .85; }
+.result-skip { position: absolute; right: 1em; bottom: .8em; font-size: .7em; opacity: .6; }
+.results { position: relative; }

@@ -159,12 +159,13 @@ async function start(game: GameDef | undefined) {
   if (!game || mode !== 'lobby' || !fits(game)) return;
   park?.destroy(); park = null;       // only one 3D scene is ever alive
   // "Play again" on the results screen comes back round this loop; any other choice of game means a walk through the park.
-  while ((await play(game)) === 'again' && fits(game)) { /* same ride again */ }
+  let replay = false;
+  while ((await play(game, replay)) === 'again' && fits(game)) replay = true;      // same ride again, straight in
   if (['game', 'results'].includes(mode as string)) lobby();
 }
 
 /** Runs one round of a game and its results screen. Resolves with what the players want next. */
-async function play(game: GameDef): Promise<'again' | 'park' | 'gone'> {
+async function play(game: GameDef, replay = false): Promise<'again' | 'park' | 'gone'> {
   mode = 'game';
   music(ZONE_MUSIC[game.meta.zone] ?? 'march');
   preload('drumroll', 'fanfare', 'applause', 'aww', 'ding');
@@ -173,10 +174,12 @@ async function play(game: GameDef): Promise<'again' | 'park' | 'gone'> {
   let result: GameResult | null = null;
   try {
     c.wait(players, game.meta.name, game.meta.blurb, game.meta.emoji);
-    const hello = say('intro');
-    c.show(h('div.center.intro', h('div.intro-emoji', game.meta.emoji), h('h1.big', game.meta.name), h('p.sub', game.meta.blurb), hello));
-    babble(hello.textContent || '');
-    await c.sleep(3.5);
+    if (!replay) {        // "Play again" skips the title card
+      const hello = say('intro');
+      c.show(h('div.center.intro', h('div.intro-emoji', game.meta.emoji), h('h1.big', game.meta.name), h('p.sub', game.meta.blurb), hello));
+      babble(hello.textContent || '');
+      await c.sleep(3.5);
+    }
     if (!explained.has(game.meta.id) && !qs.get('game')) {      // first time this session: explain the rules
       explained.add(game.meta.id);
       c.show(h('div.col.pad.howto', h('h1.big', `${game.meta.emoji} How to play ${game.meta.name}`), h('div.howto-list', ...game.meta.howTo.map((l) => h('div.howto-line', l)))));
@@ -295,7 +298,22 @@ function results(game: GameDef, r: GameResult, players: Player[]): Promise<'agai
     at(2.2, () => { duck(true); sting('drumroll'); });                 // two seconds of roll, then the hit lands with first place
     at(4.2, () => { podium.querySelector('.r1')?.classList.add('show'); sting('fanfare', 0.9); sting('applause', 0.8); });
   } else at(0.3, () => { if (r.coop && !((rows[0].s?.score ?? 0) > 0)) sting('aww'); else { sting('fanfare', 0.9); sting('applause', 0.7); } });
-  at(podium ? 6.2 : 0.3, () => { screen.classList.add('reveal'); sting('ding', 0.7); babble(remark); duck(false); });
+  at(podium ? 6.2 : 0.3, () => { screen.classList.add('reveal'); sting('ding', 0.7); babble(remark); duck(false); done(); });
+  // A click on the screen, or Space / Enter, jumps straight to the finished podium and table.
+  const hint = h('div.result-skip', 'Click or press Space to skip');
+  if (podium) screen.append(hint);
+  const reveals = timers.splice(0);
+  const onKey = (e: KeyboardEvent) => { if (e.code === 'Space' || e.code === 'Enter') { e.preventDefault(); skip(); } };
+  const done = () => { hint.remove(); removeEventListener('keydown', onKey); screen.onclick = null; };
+  const skip = () => {
+    if (screen.classList.contains('reveal')) return;
+    reveals.forEach((cancel) => cancel());
+    podium?.querySelectorAll('.pod-step').forEach((el) => el.classList.add('show'));
+    screen.classList.add('reveal');
+    sting('fanfare', 0.9); duck(false); done();
+  };
+  if (podium) { addEventListener('keydown', onKey); screen.onclick = (e) => { if (!(e.target as HTMLElement).closest('button')) skip(); }; }
+  timers.push(...reveals, done);
 
   for (const row of rows) {
     const title = team ? (row.s?.label ?? game.meta.name) : `You came ${ordinal(row.rank + 1)}`, text = `+${row.won} 🎟️ · ${row.p.tickets} total`;
