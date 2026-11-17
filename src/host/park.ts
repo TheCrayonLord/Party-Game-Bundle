@@ -6,7 +6,7 @@ import type { GameDef } from './ctx';
 import type { Player, Room } from './room';
 import { isPaused } from './clock';
 import { garageDetailed, guestDetailed, quality } from '../core/models';
-import { boothDetail } from '../core/details';
+import { boothDetail, gateAndFence } from '../core/details';
 import { MASCOT_MODELS } from '../core/mascots3d';
 import { mascot } from './mascot';
 
@@ -113,10 +113,17 @@ export class Park {
     this.trail([[0, 36], [2, 27], [-2, 17], [0, 8]], 6.5);      // gate to plaza
 
     // Front gate: two faded pillars and an arch.
-    for (const x of [-7, 7]) { this.box(s, 2.4, 10, 2.4, '#c9553a', x, 5, ZMAX + 1); this.ball(s, 1.5, this.lit('#ffe2a0'), x, 11, ZMAX + 1); }
-    this.box(s, 18, 2.6, 1.6, '#e7d7b1', 0, 10.2, ZMAX + 1);
-    for (let i = -3; i <= 3; i++) this.ball(s, 0.4, this.lit(i % 2 ? '#ffd27a' : '#ff8f6b'), i * 2.2, 8.6, ZMAX + 1.9);
-    for (let x = -XMAX - 2; x <= XMAX + 2; x += 3) if (Math.abs(x) > 9) this.box(s, 0.6, 2.4, 0.4, '#d8c9a6', x, 1.2, ZMAX + 1.5).rotation.z = Math.sin(x) * 0.12;   // a wonky picket fence
+    const gate = gateAndFence(XMAX + 4, ZMAX - ZMIN + 12, quality.detailed);
+    gate.model.position.set(0, 0, ZMAX + 1); s.add(gate.model);
+    gate.bulbs.forEach(([x, y, z], i) => this.ball(s, i < 2 ? 1.3 : 0.36, this.lit(i < 2 ? '#ffe2a0' : i % 2 ? '#ffd27a' : '#ff8f6b'), x, y, ZMAX + 1 + z));
+    {      // the lettering on the gate's sign
+      const c = document.createElement('canvas'); c.width = 640; c.height = 160;
+      const cx = c.getContext('2d')!;
+      cx.fillStyle = '#f6ead2'; cx.fillRect(0, 0, 640, 160); cx.strokeStyle = '#d9482b'; cx.lineWidth = 10; cx.strokeRect(10, 10, 620, 140);
+      cx.fillStyle = '#d9482b'; cx.font = 'bold 96px Georgia, serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle'; cx.fillText('★ FUNFAIR ★', 320, 86);
+      const sign = this.add(new THREE.PlaneGeometry(9.8, 2.45), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c) }), 0, 8.59, ZMAX + 2.1);
+      sign.rotation.x = -0.55;      // tipped back a little so it reads from the high camera
+    }
 
     // A ring of string lights round the plaza, and crooked lamp posts along the trails.
     for (let i = 0; i < 6; i++) { const a = (i / 6) * Math.PI * 2 + 0.3; this.cyl(s, 0.18, 0.24, 8, '#5b4636', Math.cos(a) * 11, 4, 7 + Math.sin(a) * 9, 5); }

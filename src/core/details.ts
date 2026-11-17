@@ -239,3 +239,80 @@ export function planeDetailed(COLOR: string) {
   for (let i = 0; i < 4; i++) P(g, box(0.14, 0.02, 0.5), i % 2 ? CREAM : COLOR, Math.sin(i * 1.3) * 0.12, -0.3 - i * 0.03, 1.3 + i * 0.5, 0, Math.sin(i * 1.7) * 0.3, 0);   // streamer
   return bake(g);
 }
+
+/**
+ * The park's front gate and its fence. Built around the gate's centre, facing +z (towards the camera).
+ * `rich` adds the brickwork, ticket booth, turnstiles, hedges and side fences that Regular start shows.
+ * Returns the merged model and where the light bulbs go (the park adds those itself, so they can glow).
+ */
+export function gateAndFence(halfWidth: number, depth: number, rich: boolean): { model: THREE.Group; bulbs: [number, number, number][] } {
+  const g = new THREE.Group(), bulbs: [number, number, number][] = [];
+  const BRICK = ['#c9553a', '#b9482e', '#d2634a'], STONE = '#d8cfb8', PICKET = '#e9dcc0', RAIL = '#cdbf9f';
+
+  // --- pillars ---
+  for (const sx of [-1, 1]) {
+    const x = sx * 7;
+    P(g, box(3.4, 0.9, 3.4), STONE, x, 0.45, 0);
+    if (rich) for (let r = 0; r < 14; r++) for (let c = 0; c < 2; c++) {          // brick courses, each half a brick out of step with the last
+      const off = (r % 2 ? 0.35 : -0.35);
+      P(g, box(1.36, 0.6, 2.7), BRICK[(r + c) % 3], x - 0.68 + c * 1.36 + off * 0.0, 1.2 + r * 0.62, 0);
+      P(g, box(2.7, 0.6, 1.36), BRICK[(r + c + 1) % 3], x, 1.2 + r * 0.62, -0.68 + c * 1.36).scale.set(r % 2 ? 1.01 : 0.99, 1, 1);
+    } else P(g, box(2.7, 8.7, 2.7), BRICK[0], x, 5.25, 0);
+    P(g, box(3.3, 0.5, 3.3), STONE, x, 9.85, 0); P(g, box(2.6, 0.4, 2.6), STONE, x, 10.3, 0);
+    P(g, cyl(0.5, 0.8, 0.8, 8), STONE, x, 10.9, 0);                                 // the lamp globe sits on this
+    bulbs.push([x, 12.3, 0]);
+    P(g, cyl(0.07, 0.07, 3.2, 5), '#5b4636', x, 14.6, 0); P(g, cone(0.9, 1.6, 3), sx < 0 ? '#e8b23a' : '#2ab7a9', x + 0.85, 15.5, 0, 0, 0, -H).scale.z = 0.12;   // pennant
+    if (rich) { P(g, box(1.7, 2.3, 0.12), '#f6ead2', x, 5.4, 1.42); P(g, box(1.9, 2.5, 0.08), '#e8b23a', x, 5.4, 1.38); P(g, new THREE.OctahedronGeometry(0.5), '#d9482b', x, 5.4, 1.5); }   // poster with a star
+  }
+
+  // --- the arch: striped blocks along a curve from pillar to pillar ---
+  const N = 17;
+  for (let i = 0; i < N; i++) {
+    const t = i / (N - 1), a = Math.PI * (1 - t), x = Math.cos(a) * 7, y = 10.4 + Math.sin(a) * 4.6;
+    P(g, box(1.75, 1.5, 1.3), i % 2 ? '#f6ead2' : '#d9482b', x, y, 0, 0, 0, a - H);
+    P(g, box(1.85, 0.22, 1.5), '#e8b23a', x + Math.cos(a) * 0.82, y + Math.sin(a) * 0.82, 0, 0, 0, a - H);      // gold edging on top
+    if (i > 0 && i < N - 1) bulbs.push([Math.cos(a) * 5.9, 10.4 + Math.sin(a) * 3.9, 0.8]);
+  }
+  P(g, cyl(0.08, 0.08, 3.4, 5), '#5b4636', 0, 17.2, 0); P(g, cone(1.1, 2.2, 3), '#d9482b', 1.1, 18.2, 0, 0, 0, -H).scale.z = 0.12;   // flag on the crown
+  P(g, ball(0.5, 10), '#e8b23a', 0, 15.6, 0);
+  for (const sx of [-1, 1]) P(g, cyl(0.05, 0.05, 3.2, 4), '#3a3440', sx * 4.4, 10.6, 0.75, -0.3);                       // chains the sign hangs from
+  P(g, box(10.4, 2.9, 0.3), '#3a2a22', 0, 8.5, 0.95, -0.55);                                                             // sign backboard (the lettering is drawn on in the park)
+
+  if (rich) {
+    // --- turnstiles ---
+    for (const x of [-2.6, 2.6]) {
+      P(g, box(0.8, 1.5, 0.8), '#8d8f96', x, 0.75, 0.2); P(g, cyl(0.42, 0.42, 0.14, 10), '#b9b4a6', x, 1.57, 0.2);
+      for (let k = 0; k < 3; k++) P(g, cyl(0.06, 0.06, 1.5, 5), '#d5d7dc', x + Math.cos(k * 2.09) * 0.7, 1.2, 0.2 + Math.sin(k * 2.09) * 0.7, H, 0, k * 2.09 + H);
+    }
+    // --- ticket booth, just inside the fence ---
+    const bx = 12.2, bz = -2.6;
+    P(g, box(3.6, 3.2, 3.2), '#f6ead2', bx, 1.6, bz);
+    for (let i = 0; i < 6; i++) P(g, box(0.6, 3.2, 0.06), i % 2 ? '#f6ead2' : '#d9482b', bx - 1.5 + i * 0.6, 1.6, bz + 1.62);
+    P(g, box(2.2, 1.2, 0.1), '#2e2536', bx, 2.3, bz + 1.66); P(g, box(2.6, 0.16, 0.8), '#8a6a45', bx, 1.6, bz + 1.9);
+    for (let i = 0; i < 8; i++) P(g, box(0.56, 0.3, 3.9), i % 2 ? '#d9482b' : '#f6ead2', bx - 1.96 + i * 0.56, 3.5 + (i % 2) * 0.01, bz + 0.2, 0.12);   // striped roof
+    P(g, cone(2.9, 1.5, 4), '#d9482b', bx, 4.5, bz, 0, Math.PI / 4, 0); P(g, ball(0.3, 8), '#e8b23a', bx, 5.4, bz);
+    P(g, box(2.4, 0.6, 0.1), '#e8b23a', bx, 3.3, bz + 2.0);
+    // --- hedges behind the fence ---
+    for (let x = 12; x <= halfWidth; x += 5.5) for (const sx of [-1, 1]) {
+      if (sx > 0 && x < 17) continue;                                                                           // leave room for the ticket booth
+      for (const [dx, r] of [[0, 1.3], [1.6, 1.05], [-1.5, 1.1]]) P(g, ball(r, 7), (x * 3) % 2 > 1 ? '#3f6a48' : '#4a7a52', sx * x + dx, r * 0.7, -1.8).scale.y = 0.8;
+    }
+  }
+
+  // --- the fence: posts, two rails and pointed pickets, a little wonky, with the odd one missing ---
+  const run = (x0: number, z0: number, x1: number, z1: number) => {
+    const len = Math.hypot(x1 - x0, z1 - z0), ry = -Math.atan2(z1 - z0, x1 - x0), step = rich ? 0.82 : 1.5;
+    for (const y of [0.9, 2.0]) P(g, box(len, 0.2, 0.14), RAIL, (x0 + x1) / 2, y, (z0 + z1) / 2, 0, ry, 0);
+    for (let d = 0; d <= len + 0.01; d += 4.1) { const x = x0 + ((x1 - x0) * d) / len, z = z0 + ((z1 - z0) * d) / len; P(g, box(0.5, 3.3, 0.5), STONE, x, 1.65, z, 0, ry, 0); P(g, ball(0.36, 7), '#c9553a', x, 3.5, z); }
+    for (let d = step / 2; d < len; d += step) {
+      const x = x0 + ((x1 - x0) * d) / len, z = z0 + ((z1 - z0) * d) / len, wob = Math.sin(d * 1.7 + x0);
+      if (wob > 0.94) continue;                                                                                  // a gap where one has gone
+      const lean = wob * 0.07, drop = wob < -0.9 ? 0.5 : 0;
+      P(g, box(0.4, 2.4 - drop, 0.12), PICKET, x, 1.25 - drop / 2, z + 0.12 * Math.cos(ry), 0, ry, lean);
+      P(g, cone(0.28, 0.42, 4), PICKET, x - lean * 1.3, 2.66 - drop, z + 0.12 * Math.cos(ry), 0, ry + Math.PI / 4, lean).scale.z = 0.35;
+    }
+  };
+  run(-halfWidth, 0.5, -8.9, 0.5); run(8.9, 0.5, halfWidth, 0.5);
+  if (rich) { run(-halfWidth, 0.5, -halfWidth, -depth); run(halfWidth, 0.5, halfWidth, -depth); }
+  return { model: bake(g), bulbs };
+}
