@@ -88,7 +88,8 @@ export function finale(app: HTMLElement, room: Room, night: Night): { done: Prom
     const rest = standing.filter((_, i) => ranks[i] > 2);
     const others = h('div.finale-rest', ...rest.map((p) => h('span.badge', { style: { background: p.color } }, `${ordinal(ranks[standing.indexOf(p)] + 1)} ${p.avatar} ${p.name} · ${p.tickets}`)));
     const confetti = h('div.confetti');
-    const screen = h('div.finale', h('h1.big', 'Tonight’s Grand Prize'), banner, others, standing.length ? stage : h('p.sub', 'Nobody came to the fair tonight.'), confetti);
+    const sweeps = h('div.sweeps', ...['#fff3c4', '#ffd98a', '#ff9ac2', '#9fe0ff', '#fff3c4', '#c9a2ff'].map((c, i) => h('i', { style: { left: `${6 + i * 17.6}%`, color: c, animationDuration: `${5.5 + (i % 3) * 1.7}s`, animationDelay: `${-i * 1.3}s` } })));
+    const screen = h('div.finale', sweeps, h('h1.big', 'Tonight’s Grand Prize'), banner, others, standing.length ? stage : h('p.sub', 'Nobody came to the fair tonight.'), confetti);
     app.replaceChildren(screen);
     await wait(1.6);
     curtain.classList.remove('closed');

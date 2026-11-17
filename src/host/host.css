@@ -376,3 +376,11 @@ img.mascot-face.model { width: 7.6em; height: 7.6em; margin: -.9em -.5em -.5em -
 @keyframes toast { 0% { opacity: 0; transform: translateX(-50%) scale(.6); } 12% { opacity: 1; transform: translateX(-50%) scale(1.08); } 20% { transform: translateX(-50%) scale(1); } 80% { opacity: 1; } 100% { opacity: 0; } }
 .race-map { position: absolute; right: .7em; bottom: .7em; width: 13.5em; background: rgba(20,12,35,.5); border-radius: .7em; padding: .2em; pointer-events: none; z-index: 3; }
 .surprise { align-self: flex-start; }
+
+/* finale: columns of light sweeping to and fro behind the podium */
+.sweeps { position: absolute; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; mix-blend-mode: screen; }
+.sweeps i { position: absolute; top: -6%; width: 9em; height: 125%; margin-left: -4.5em; transform-origin: 50% 0; opacity: .34;
+  background: linear-gradient(currentColor, transparent 88%); clip-path: polygon(44% 0, 56% 0, 100% 100%, 0 100%); animation: sweep ease-in-out infinite alternate; }
+.sweeps i:nth-child(even) { animation-direction: alternate-reverse; }
+@keyframes sweep { from { transform: rotate(-24deg); } to { transform: rotate(24deg); } }
+.finale > h1, .finale > .finale-banner, .finale > .finale-rest, .finale > .stage { position: relative; z-index: 1; }

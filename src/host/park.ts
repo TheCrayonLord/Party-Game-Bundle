@@ -25,7 +25,7 @@ const LAYOUT: Record<string, [number, number, number]> = {
 const SPARE: [number, number, number][] = [[0, -26, 0], [10, 24, -10], [-6, 26, 10]];   // for any ride without a hand-picked spot
 type Tick = (t: number) => void;
 
-interface Booth { game: GameDef; x: number; z: number; px: number; pz: number; open: boolean; label: HTMLElement; count: HTMLElement; pad: THREE.Mesh; ring: THREE.Mesh; shut: THREE.Mesh; votes: number }
+interface Booth { game: GameDef; x: number; z: number; px: number; pz: number; open: boolean; label: HTMLElement; count: HTMLElement; pad: THREE.Mesh; ring: THREE.Mesh; shut: THREE.Mesh; votes: number; glow: THREE.Material[] }
 interface Guest { p: Player; g: THREE.Group; x: number; z: number; mx: number; mz: number; face: number; tx: number; tz: number; think: number; at: Booth | null; live: string; legs?: THREE.Object3D[]; step: number; color: string }
 
 export interface ParkOverlays { ticket: HTMLElement; mascot: HTMLElement; controls: HTMLElement }
@@ -137,6 +137,9 @@ export class Park {
     for (const [x, z, lean] of [[-12, 24, 0.1], [13, 22, -0.08], [-30, 6, 0.06], [32, -12, -0.1], [-10, -16, 0.08], [14, -18, -0.05], [-46, 8, 0.1], [47, 8, -0.07]]) {
       const post = this.cyl(s, 0.16, 0.22, 6.5, '#3f3328', x, 3.25, z, 5); post.rotation.z = lean; this.ball(s, 0.55, this.lit('#ffd98a'), x - lean * 6, 6.7, z);
     }
+    for (let i = 0; i < 42; i += 3) { const a = (i / 42) * Math.PI * 2 + 0.3; this.lightPool(Math.cos(a) * 11, 7 + Math.sin(a) * 9, 4.2, ['#ffd27a', '#ff9f7b', '#9fe0d8'][(i / 3) % 3]); }      // under the string lights
+    for (const [x, z, lean] of [[-12, 24, 0.1], [13, 22, -0.08], [-30, 6, 0.06], [32, -12, -0.1], [-10, -16, 0.08], [14, -18, -0.05], [-46, 8, 0.1], [47, 8, -0.07]]) this.lightPool(x - lean * 6, z, 7);      // under the lamp posts
+    for (const x of [-7, 0, 7]) this.lightPool(x, ZMAX - 1.5, x ? 8 : 9, '#ffe2a0');      // inside the gate
     // Clutter: barrels, crates and a bench or two.
     for (const [x, z] of [[-8, 2], [9, 3], [-27, 12], [33, 22], [-16, -14], [15, 26], [-48, -12], [48, -8]]) this.cyl(s, 0.9, 0.9, 1.6, '#8a6a45', x, 0.8, z);
     for (const [x, z] of [[11, -2], [-33, -8], [30, 2], [-20, 27]]) this.box(s, 1.6, 1.4, 1.6, '#a98b5e', x, 0.7, z).rotation.y = x;
@@ -303,7 +306,13 @@ export class Park {
       const count = h('span.park-count');
       const label = h('div.park-label', h('span.park-name', game.meta.name), count);
       this.labels.append(label);
-      this.booths.push({ game, x, z, px, pz, open: true, label, count, pad, ring, shut, votes: 0 });
+      // After dark, a ride that is open has its lights on: a warm glow spilling from the front and a pool of light at the door.
+      const warm = this.glowMat('#ffcf7a'), spill = this.glowMat('#ffd98a');
+      const lamp = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.glowTex(), color: '#ffd27a', transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending }));
+      lamp.scale.set(11, 8, 1); lamp.position.set(0, 2.6, 2.4); g.add(lamp);
+      const pool = this.add(new THREE.CircleGeometry(7, 20), spill, 0, 0.09, 4.2, g); pool.rotation.x = -Math.PI / 2; pool.scale.set(1.25, 1, 1);
+      const inner = this.add(new THREE.PlaneGeometry(5.5, 3), warm, 0, 2.0, 1.72, g); void inner;
+      this.booths.push({ game, x, z, px, pz, open: true, label, count, pad, ring, shut, votes: 0, glow: [lamp.material, spill, warm] });
     });
   }
 
@@ -363,10 +372,36 @@ export class Park {
     mix(a[0], b[0], this.scene.background as THREE.Color); mix(a[1], b[1], (this.scene.fog as THREE.Fog).color);
     mix(a[2], b[2], this.amb.color); this.amb.intensity = a[3] + (b[3] - a[3]) * e;
     mix(a[4], b[4], this.sun.color); this.sun.intensity = a[5] + (b[5] - a[5]) * e;
+    // How dark it is: full at night, part-way at dusk and dawn, none by day. Lights respond to it.
+    const DARK = [0.3, 1, 0.12, 0];
+    this.night = DARK[i] + (DARK[(i + 1) % DARK.length] - DARK[i]) * e;
+    for (const m of this.poolMats) m.opacity = this.night * 0.5;
+    for (const bo of this.booths) { const on = bo.open ? this.night : 0; (bo.glow[0] as THREE.SpriteMaterial).opacity = on * 0.55; bo.glow[1].opacity = on * 0.5; bo.glow[2].opacity = on * 0.7; }
     const ang = (t / DAY) * Math.PI * 2;
     this.sun.position.set(-30 * Math.cos(ang) - 20 * Math.sin(ang), 60, 40 + 18 * Math.sin(ang));
   }
   private tmpA = new THREE.Color(); private tmpB = new THREE.Color();
+  private night = 0;
+  private poolMats: THREE.Material[] = [];
+  private glowMap: THREE.Texture | null = null;
+  /** A soft round blob of light, bright in the middle and fading to nothing. */
+  private glowTex() {
+    if (this.glowMap) return this.glowMap;
+    const c = document.createElement('canvas'); c.width = c.height = 128;
+    const cx = c.getContext('2d')!, gr = cx.createRadialGradient(64, 64, 2, 64, 64, 64);
+    gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.4, 'rgba(255,255,255,.45)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+    cx.fillStyle = gr; cx.fillRect(0, 0, 128, 128);
+    return (this.glowMap = new THREE.CanvasTexture(c));
+  }
+  /** Light that adds to whatever is under it. Starts dark; the day/night cycle turns it up. */
+  private glowMat(color: string) {
+    return new THREE.MeshBasicMaterial({ map: this.glowTex(), color, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
+  }
+  /** A pool of light on the ground under a lamp. */
+  private lightPool(x: number, z: number, r: number, color = '#ffd98a') {
+    const m = this.glowMat(color); this.poolMats.push(m);
+    const pool = this.add(new THREE.CircleGeometry(r, 18), m, x, 0.1, z); pool.rotation.x = -Math.PI / 2;
+  }
   /** Where in the day the park opens (0 = dusk, 0.25 = night, 0.5 = dawn, 0.75 = day); ?time= sets it, for looking at each. */
   private dayStart = Number(new URLSearchParams(location.search).get('time')) || 0;
 
