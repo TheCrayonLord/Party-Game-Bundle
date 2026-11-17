@@ -5,7 +5,7 @@ import { attachRelay } from './server/relay-core.mjs';
 
 export default defineConfig({
   base: './',
-  build: { rollupOptions: { input: { host: resolve(__dirname, 'index.html'), play: resolve(__dirname, 'play.html') } } },
+  build: { rollupOptions: { input: { host: resolve(__dirname, 'index.html'), play: resolve(__dirname, 'play.html'), visuals: resolve(__dirname, 'visuals.html') } } },
   plugins: [{
     name: 'party-relay',
     configureServer(server) {
