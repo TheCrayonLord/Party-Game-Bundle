@@ -1,4 +1,5 @@
 // The shared racing engine. Tilt Kart and Riptide Regatta are both this with different settings.
+import { boatDetailed, kartDetailed, quality } from '../core/models';
 import * as THREE from 'three';
 import { clamp, h, ordinal, pick, rand } from '../core/util';
 import type { Ctx, Score } from '../host/ctx';
@@ -210,7 +211,8 @@ export async function runRace(ctx: Ctx, cfg: RaceConfig): Promise<Score[]> {
   };
   const build = (p: Player) => {
     const g = new THREE.Group();
-    if (boat) {
+    if (quality.detailed) g.add(boat ? boatDetailed(p.color) : kartDetailed(p.color));
+    else if (boat) {
       const hull = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.8, 2.6), mat(p.color)); hull.position.y = 0.5;
       const bow = new THREE.Mesh(new THREE.ConeGeometry(1.34, 1.8, 4), mat(p.color)); bow.rotation.x = Math.PI / 2; bow.rotation.z = Math.PI / 4; bow.position.set(0, 0.5, 2.2);
       const mast = new THREE.Mesh(new THREE.BoxGeometry(0.15, 2.6, 0.15), mat('#f6ead2')); mast.position.set(0, 1.9, 0);
@@ -223,7 +225,11 @@ export async function runRace(ctx: Ctx, cfg: RaceConfig): Promise<Score[]> {
       g.add(body, nose, head);
       for (const [wx, wz] of [[-1.1, 1], [1.1, 1], [-1.1, -1], [1.1, -1]]) { const w = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.8, 0.9), mat('#1b1220')); w.position.set(wx, 0.4, wz); g.add(w); }
     }
-    const b = badge(p); b.position.set(0, boat ? 0.95 : 1.07, 0.9); g.add(b);
+    const b = badge(p);
+    if (!quality.detailed) b.position.set(0, boat ? 0.95 : 1.07, 0.9);
+    else if (boat) { b.position.set(0, 1.53, -0.45); b.scale.setScalar(0.6); }      // on the cabin roof
+    else { b.position.set(0, 0.83, 1.15); b.scale.setScalar(0.55); }                // on the nose
+    g.add(b);
     g.scale.setScalar(1.5); scene.add(g);
     return g;
   };

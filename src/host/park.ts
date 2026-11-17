@@ -5,6 +5,7 @@ import { clamp, h, pick } from '../core/util';
 import type { GameDef } from './ctx';
 import type { Player, Room } from './room';
 import { isPaused } from './clock';
+import { garageDetailed, guestDetailed, quality } from '../core/models';
 
 const ZONE_COLORS: Record<string, string> = { Speedway: '#c9553a', Lagoon: '#3f8fa6', 'Art Alley': '#d9a441', Midway: '#b0527a', 'Fortune Tent': '#6f5aa8', 'Haunted Manor': '#4f6b5a' };
 const XMAX = 50, ZMIN = -30, ZMAX = 33, SPEED = 15, PAD_R = 4.6;
@@ -54,6 +55,15 @@ export class Park {
     root.replaceChildren(h('div.park', renderer.domElement, this.labels, this.banner, this.overlay));
     this.buildScenery();
     this.buildBooths(games);
+    if (quality.detailed) {        // regular start: soft shadows across the whole park
+      renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); sun.shadow.bias = -0.0008; sun.shadow.normalBias = 0.05;
+      Object.assign(sun.shadow.camera, { left: -75, right: 75, top: 60, bottom: -60, near: 1, far: 220 }); sun.shadow.camera.updateProjectionMatrix();
+      scene.updateMatrixWorld(true);       // sizes below are measured in the world, so positions must be current
+      scene.traverse((o) => { const m = o as THREE.Mesh; if (!m.isMesh) return; m.geometry.computeBoundingBox(); const bb = new THREE.Box3().setFromObject(m);
+        const flat = (m.material as THREE.Material).transparent || bb.max.y < 0.6 || bb.max.y - bb.min.y < 0.3;
+        m.receiveShadow = true; m.castShadow = !flat; (m.material as THREE.Material).needsUpdate = true; });
+    }
     this.fit();
     addEventListener('resize', this.fit);
     this.raf = requestAnimationFrame(this.frame);
@@ -137,6 +147,7 @@ export class Park {
     const W = '#e7d7b1', WOOD = '#8a6a45', DARK = '#2b1d2e';
     switch (id) {
       case 'tiltkart': {          // pit garage, checkered awning, tyres, a parked kart
+        if (quality.detailed) { g.add(garageDetailed(color)); break; }
         this.box(g, 9, 4, 5, '#8d8f96', 0, 2, -1); this.box(g, 6, 3, 0.3, DARK, 0, 1.5, 1.55);
         for (let i = 0; i < 8; i++) this.box(g, 1.15, 0.3, 2.4, i % 2 ? '#f4f0e6' : DARK, -4.03 + i * 1.15, 4.3, 2.4).rotation.x = 0.25;
         for (let i = 0; i < 3; i++) this.cyl(g, 0.8, 0.8, 0.5, DARK, 5.6, 0.25 + i * 0.5, 1.5, 10);
@@ -302,10 +313,13 @@ export class Park {
 
   private spawn(p: Player) {
     const g = new THREE.Group();
-    this.add(new THREE.CylinderGeometry(0.75, 1.15, 2.3, 8), this.mat(p.color), 0, 1.15, 0, g);                 // body
-    this.add(new THREE.SphereGeometry(0.85, 8, 6), this.mat('#f3dcc0'), 0, 2.9, 0, g);                        // head
-    this.add(new THREE.ConeGeometry(0.75, 0.9, 8), this.mat(p.color), 0, 3.95, 0, g);                         // party hat
-    this.add(new THREE.SphereGeometry(0.22, 5, 4), this.mat('#2b1d2e'), 0, 2.95, 0.8, g);                     // nose, so you can see which way they face
+    if (quality.detailed) { const body = guestDetailed(p.color); body.traverse((o) => { o.castShadow = true; }); g.add(body); }
+    else {
+      this.add(new THREE.CylinderGeometry(0.75, 1.15, 2.3, 8), this.mat(p.color), 0, 1.15, 0, g);                 // body
+      this.add(new THREE.SphereGeometry(0.85, 8, 6), this.mat('#f3dcc0'), 0, 2.9, 0, g);                        // head
+      this.add(new THREE.ConeGeometry(0.75, 0.9, 8), this.mat(p.color), 0, 3.95, 0, g);                         // party hat
+      this.add(new THREE.SphereGeometry(0.22, 5, 4), this.mat('#2b1d2e'), 0, 2.95, 0.8, g);                     // nose, so you can see which way they face
+    }
     const shadow = this.add(new THREE.CircleGeometry(1.2, 12), new THREE.MeshBasicMaterial({ color: '#000', transparent: true, opacity: 0.22 }), 0, 0.05, 0, g); shadow.rotation.x = -Math.PI / 2;
     const c = document.createElement('canvas'); c.width = c.height = 64;
     const cx = c.getContext('2d')!; cx.font = '46px sans-serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle'; cx.fillText(p.avatar, 32, 36);
@@ -334,7 +348,7 @@ export class Park {
   private frame = (now: number) => {
     if (!this.alive) return;
     now = performance.now();
-    const dt = isPaused() ? 0 : Math.min(0.05, (now - this.last) / 1000), t = now / 1000; this.last = now;
+    const dt = isPaused() ? 0 : Math.min(0.12, (now - this.last) / 1000), t = now / 1000; this.last = now;
     const guests = [...this.guests.values()];
     const humansAt = (b: Booth) => guests.filter((g) => !g.p.bot && g.at === b).length;
 

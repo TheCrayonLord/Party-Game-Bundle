@@ -8,6 +8,7 @@ import { Cancelled, Ctx, type GameDef, type GameResult } from './ctx';
 import { GAMES } from '../games';
 import { bubble, line, mascot, nextMascot, say } from './mascot';
 import { Park } from './park';
+import { quality } from '../core/models';
 import { later } from './clock';
 import { BOT_LEVELS, initPause } from './pause';
 import { finale, newNight } from './finale';
@@ -53,6 +54,7 @@ function chooseMenu(): Promise<Menu> {
 
 async function boot() {
   menu = await chooseMenu();
+  quality.detailed = menu === 'park';
   app.replaceChildren(h('div.center', h('h1.big', 'Opening the gates…')));
   const net = await createHost();
   net.onDown = (why) => fatal(why);
@@ -95,6 +97,7 @@ const fits = (g: GameDef) => room.players.length >= g.meta.min && room.players.l
 
 function lobby() {
   mode = 'lobby';
+  quality.detailed = menu === 'park';       // Regular start gets the detailed models; Performance start keeps the simple ones
   music('waltz');
   room.promote();       // a free seat goes to whoever has waited longest in the audience
   for (const s of room.audience) if (s.view.key !== 'audience') room.setView(s, { type: 'wait', key: 'audience', title: 'You’re in the audience', text: 'The park is full, but you can vote and cheer once a ride starts.', emoji: '👀' });
