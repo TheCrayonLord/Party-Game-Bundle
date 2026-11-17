@@ -11,7 +11,7 @@ import { Park } from './park';
 import { quality } from '../core/models';
 import { later } from './clock';
 import { BOT_LEVELS, initPause } from './pause';
-import { finale, newNight } from './finale';
+import { finale, newNight, plain } from './finale';
 import { setFullscreen } from './settings';
 import { babble, duck, music, preload, sfx, sting, unlockSound, type Track } from './sound';
 
@@ -144,7 +144,7 @@ function lobby() {
     h('div.zone-rides', ...GAMES.filter((g) => g.meta.zone === z).map((g) => {
       const ok = fits(g);
       return h('button.ride' + (ok ? '' : '.closed'), { disabled: !ok, onclick: () => start(g), 'data-game': g.meta.id },
-        h('span.ride-emoji', g.meta.emoji), h('span.ride-name', g.meta.name),
+        h('span.ride-name', g.meta.name),
         h('span.ride-blurb', g.meta.blurb), h('span.ride-count', ok ? `${g.meta.min}–${g.meta.max} players` : `CLOSED · needs ${g.meta.min}–${g.meta.max}`));
     })))));
 
@@ -153,7 +153,7 @@ function lobby() {
   const open = GAMES.filter(fits);
   for (const p of room.players) {
     if (p.vip) room.setView(p, open.length
-      ? { type: 'choice', key: 'lobby-vip-' + open.map((g) => g.meta.id).join(), id: 'pick', prompt: 'Pick an attraction', sub: 'You’re the host: everyone follows you.', options: open.map((g) => ({ id: g.meta.id, label: `${g.meta.emoji} ${g.meta.name}` })) }
+      ? { type: 'choice', key: 'lobby-vip-' + open.map((g) => g.meta.id).join(), id: 'pick', prompt: 'Pick an attraction', sub: 'You’re the host: everyone follows you.', options: open.map((g) => ({ id: g.meta.id, label: g.meta.name })) }
       : { type: 'wait', key: 'lobby-vip-none', title: 'You’re the host!', text: 'Waiting for more guests before any ride can open.', emoji: '🎩' });
     else if (p.view.key !== 'lobby') room.setView(p, { type: 'wait', key: 'lobby', title: 'You’re in!', text: 'Watch the big screen. The host picks the ride.', emoji: '🎟️' });
   }
@@ -180,13 +180,13 @@ async function play(game: GameDef, replay = false): Promise<'again' | 'park' | '
     c.wait(players, game.meta.name, game.meta.blurb, game.meta.emoji);
     if (!replay) {        // "Play again" skips the title card
       const hello = say('intro');
-      c.show(h('div.center.intro', h('div.intro-emoji', game.meta.emoji), h('h1.big', game.meta.name), h('p.sub', game.meta.blurb), hello));
+      c.show(h('div.center.intro', h('h1.big', game.meta.name), h('p.sub', game.meta.blurb), hello));
       babble(hello.textContent || '');
       await c.sleep(3.5);
     }
     if (!explained.has(game.meta.id) && !qs.get('game')) {      // first time this session: explain the rules
       explained.add(game.meta.id);
-      c.show(h('div.col.pad.howto', h('h1.big', `${game.meta.emoji} How to play ${game.meta.name}`), h('div.howto-list', ...game.meta.howTo.map((l) => h('div.howto-line', l)))));
+      c.show(h('div.col.pad.howto', h('h1.big', `How to play ${game.meta.name}`), h('div.howto-list', ...game.meta.howTo.map((l) => h('div.howto-line', l)))));
       const key = c.key('howto');
       c.all({ type: 'info', key, id: 'none', title: `How to play ${game.meta.name}`, lines: game.meta.howTo });
       await c.next('Got it, let’s play!', 45);
@@ -293,7 +293,7 @@ function results(game: GameDef, r: GameResult, players: Player[]): Promise<'agai
       h('span.result-move' + (move > 0 ? '.up' : move < 0 ? '.down' : ''), move > 0 ? `▲${move}` : move < 0 ? `▼${-move}` : '–'));
   }));
   const says = bubble(remark);
-  const screen = h('div.results' + (team ? '.team' : ''), h('h1.big', r.headline || `${game.meta.emoji} ${game.meta.name}`), podium, table, says,
+  const screen = h('div.results' + (team ? '.team' : ''), h('h1.big', plain(r.headline || game.meta.name)), podium, table, says,
     h('div.row.result-next', h('button.btn', { onclick: () => resultsDone?.('again'), 'data-next': 'again' }, '🔁 Play again'), h('button.btn', { onclick: () => resultsDone?.('park'), 'data-next': 'park' }, 'Back to the park')));
   app.replaceChildren(screen);
   // Reveal: third, second, a pause, then first; after that the table and the mascot.

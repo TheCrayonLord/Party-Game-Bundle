@@ -64,7 +64,7 @@ export class Ctx {
     this.hudWait = h('div.hud-wait');
     this.hudTimer = h('div.hud-timer');
     this.stage = h('div.stage');
-    root.replaceChildren(h('div.game', h('div.hud', h('div.hud-title', `${meta.emoji} ${meta.name}`), this.hudWait, this.hudTimer), this.stage, this.talk));
+    root.replaceChildren(h('div.game', h('div.hud', h('div.hud-title', meta.name), this.hudWait, this.hudTimer), this.stage, this.talk));
     this.onInput((p, d) => {        // the audience cheering: their emoji floats up the big screen
       if (typeof d?.cheer !== 'string' || this.players.includes(p)) return;
       const now = performance.now(); if (now - (this.cheered.get(p.id) || 0) < 500) return;

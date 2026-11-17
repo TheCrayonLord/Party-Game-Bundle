@@ -228,7 +228,7 @@ body.host { font-size: clamp(14px, 1.5vw, 26px); }
 .park-count:empty { display: none; }
 .park-banner { position: absolute; left: 50%; bottom: .7em; transform: translateX(-50%); background: rgba(20,12,35,.78); border-radius: 999px; padding: .35em 1.2em; font-family: var(--display); font-size: 1.15em; color: var(--mustard); text-align: center; max-width: 80%; }
 .park-overlay > .booth { position: absolute; left: .7em; top: .7em; font-size: .5em; transform: rotate(-2deg); transform-origin: top left; }
-.park-overlay > .mascot { position: absolute; right: 1em; top: .7em; font-size: .75em; max-width: 24em; }
+.park-overlay > .mascot { position: absolute; right: 1em; top: .7em; font-size: .75em; max-width: 32em; }
 .park-overlay > .bot-row { position: absolute; right: 1em; bottom: .8em; font-size: .8em; }
 
 /* Downhill Dash: one framed view per skier */
@@ -336,3 +336,20 @@ body.host { font-size: clamp(14px, 1.5vw, 26px); }
 .finale .podium { min-height: 15em; }
 .credits { z-index: 10; }
 img.mascot-face.model { width: 4.6em; height: 4.6em; font-size: 1em; object-fit: contain; flex: none; margin: -.6em -.4em -.4em -.6em; }
+
+/* the final stage is built up from the bottom edge of the screen */
+.finale { justify-content: flex-start; padding-bottom: 0; }
+.finale .stage { margin-top: auto; }
+.stage-front { height: 5.2em; border-radius: 0; }
+.stage-steps { bottom: 0; }
+.stage-steps i { height: .9em; }
+.finale-banner { min-height: 1.3em; }
+
+/* a bigger mascot with bigger speech */
+.mascot { gap: .8em; max-width: 46em; }
+.mascot-face { font-size: 4.6em; }
+img.mascot-face.model { width: 7.6em; height: 7.6em; margin: -.9em -.5em -.5em -.9em; }
+.mascot-bubble { font-size: 1.3em; padding: .45em 1em; }
+.commentary { font-size: 1em; max-width: 34em; }
+.bear { left: calc(50% - .62em); bottom: 96%; font-size: 4.6em; }
+.finale .podium { min-height: 19em; }

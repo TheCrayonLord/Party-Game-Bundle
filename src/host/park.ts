@@ -290,7 +290,7 @@ export class Park {
       const pad = this.add(new THREE.CircleGeometry(PAD_R, 22), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.1, depthWrite: false }), px, 0.07, pz); pad.rotation.x = -Math.PI / 2;
       const ring = this.add(new THREE.RingGeometry(PAD_R - 0.4, PAD_R, 26), new THREE.MeshBasicMaterial({ color: '#fff4d6', transparent: true, opacity: 0.1, depthWrite: false }), px, 0.08, pz); ring.rotation.x = -Math.PI / 2;
       const count = h('span.park-count');
-      const label = h('div.park-label', h('span.park-emoji', game.meta.emoji), h('span.park-name', game.meta.name), count);
+      const label = h('div.park-label', h('span.park-name', game.meta.name), count);
       this.labels.append(label);
       this.booths.push({ game, x, z, px, pz, open: true, label, count, pad, ring, shut, votes: 0 });
     });
@@ -349,9 +349,6 @@ export class Park {
       this.add(new THREE.SphereGeometry(0.22, 5, 4), this.mat('#2b1d2e'), 0, 2.95, 0.8, g);                     // nose, so you can see which way they face
     }
     const shadow = this.add(new THREE.CircleGeometry(1.2, 12), new THREE.MeshBasicMaterial({ color: '#000', transparent: true, opacity: 0.22 }), 0, 0.05, 0, g); shadow.rotation.x = -Math.PI / 2;
-    const c = document.createElement('canvas'); c.width = c.height = 64;
-    const cx = c.getContext('2d')!; cx.font = '46px sans-serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle'; cx.fillText(p.avatar, 32, 36);
-    const tag = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), depthTest: false })); tag.scale.set(2.2, 2.2, 1); tag.position.y = 5.6; g.add(tag);
     const x = atX ?? SPAWN.x + (Math.random() - 0.5) * 10, z = atZ ?? SPAWN.z + (Math.random() - 0.5) * 4;
     g.position.set(x, 0, z); g.scale.setScalar(0.01);
     this.scene.add(g);
@@ -438,11 +435,11 @@ export class Park {
     if (choice.length) {
       this.countdown -= dt;
       const secs = Math.max(1, Math.ceil(this.countdown));
-      this.banner.textContent = choice.length > 1 ? `It’s a tie! ${choice.map((b) => b.game.meta.name).join(' vs ')}: picking at random in ${secs}…` : `${choice[0].game.meta.emoji} ${choice[0].game.meta.name} starts in ${secs}…`;
+      this.banner.textContent = choice.length > 1 ? `It’s a tie! ${choice.map((b) => b.game.meta.name).join(' vs ')}: picking at random in ${secs}…` : `${choice[0].game.meta.name} starts in ${secs}…`;
       if (this.countdown <= 0) { this.alive = false; this.start(pick(choice).game); return; }
     } else this.banner.textContent = n ? 'Walk to a ride. When most of you are standing at the same one, it starts.' : 'Scan the ticket to come in through the gate';
     for (const g of guests) {
-      const live = g.at ? `${g.at.game.meta.emoji} ${g.at.game.meta.name}: ${g.at.votes} of ${n} here` : 'Walk to a ride';
+      const live = g.at ? `${g.at.game.meta.name}: ${g.at.votes} of ${n} here` : 'Walk to a ride';
       if (live !== g.live) { g.live = live; this.room.live(g.p, { big: live }); }
     }
 

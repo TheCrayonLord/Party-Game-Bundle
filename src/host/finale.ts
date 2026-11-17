@@ -13,6 +13,9 @@ export const newNight = (): Night => ({ played: [], crashes: new Map(), outs: ne
 
 export type AfterFinale = 'again' | 'fresh' | 'desktop';
 
+/** Drops any emoji or symbols from the front of a title. */
+export const plain = (s: string) => s.replace(/^[^\p{L}\p{N}]+/u, '');
+
 const wait = (sec: number) => new Promise<void>((r) => setTimeout(r, (sec * 1000) / SPEED));
 
 /** The night's highlights, as credit sections. */
@@ -24,7 +27,7 @@ function credits(room: Room, night: Night, standing: Player[]): { title: string;
 
   const rides = night.played.map((g) => {
     const winners = g.rows.filter((r) => r.rank === 0).map((r) => r.name);
-    return `${g.game.emoji} ${g.game.name} · ${g.team ? (g.headline || 'a team effort') : `won by ${winners.join(' & ')}`}`;
+    return `${g.game.name} · ${g.team ? (plain(g.headline || '') || 'a team effort') : `won by ${winners.join(' & ')}`}`;
   });
 
   const honours: string[] = [];
@@ -85,7 +88,7 @@ export function finale(app: HTMLElement, room: Room, night: Night): { done: Prom
     const rest = standing.filter((_, i) => ranks[i] > 2);
     const others = h('div.finale-rest', ...rest.map((p) => h('span.badge', { style: { background: p.color } }, `${ordinal(ranks[standing.indexOf(p)] + 1)} ${p.avatar} ${p.name} · ${p.tickets}`)));
     const confetti = h('div.confetti');
-    const screen = h('div.finale', h('h1.big', 'Tonight’s Grand Prize'), standing.length ? stage : h('p.sub', 'Nobody came to the fair tonight.'), banner, others, confetti);
+    const screen = h('div.finale', h('h1.big', 'Tonight’s Grand Prize'), banner, others, standing.length ? stage : h('p.sub', 'Nobody came to the fair tonight.'), confetti);
     app.replaceChildren(screen);
     await wait(1.6);
     curtain.classList.remove('closed');
