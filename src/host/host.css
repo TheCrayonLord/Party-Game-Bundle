@@ -352,4 +352,15 @@ img.mascot-face.model { width: 7.6em; height: 7.6em; margin: -.9em -.5em -.5em -
 .mascot-bubble { font-size: 1.3em; padding: .45em 1em; }
 .commentary { font-size: 1em; max-width: 34em; }
 .bear { left: calc(50% - .62em); bottom: 96%; font-size: 4.6em; }
-.finale .podium { min-height: 19em; }
+.finale .podium { min-height: 15em; }
+/* several players tied on one step stand side by side, smaller, instead of stacking up out of view */
+.finale .pod-figs { max-width: none; flex-wrap: nowrap; }
+.finale .pod-step { min-width: 8em; }
+.finale .pod-figs:has(.pod-fig:nth-child(3)) { font-size: .78em; }
+.finale .pod-figs:has(.pod-fig:nth-child(5)) { font-size: .6em; }
+.finale .stage { flex: none; }
+/* the bear lands on the stage floor beside the podium */
+.finale .r1 .pod-figs { position: static; }
+.finale .podium { position: relative; }
+.bear { left: calc(100% + .05em); bottom: 0; font-size: 6.5em; }
+.finale .stage { overflow: visible; }      /* the in-game .stage clips its contents; this one must not */
