@@ -34,6 +34,7 @@ if (shots) { await host.screenshot({ path: `${shots}/park-arrive.png` }); await 
 // Both walk up the main path and a step to the right, to the ride just beyond the plaza.
 const hold = (p, dir, ms) => p.evaluate(async ([dir, ms]) => {
   const b = document.querySelector('.walk-arrow.' + dir);
+  if (!b) return;      // the ride has already started and the walk pad is gone
   b.setPointerCapture = () => {};
   b.dispatchEvent(new PointerEvent('pointerdown', { pointerId: 1, bubbles: true }));
   await new Promise((r) => setTimeout(r, ms));
