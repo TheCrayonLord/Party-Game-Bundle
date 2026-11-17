@@ -61,6 +61,7 @@ async function boot() {
   room = new Room(net);
   room.onChange = () => { if (mode === 'lobby') lobby(); else if (mode === 'game') ctx?.crowdSync(); };
   room.onInput = (p, d) => {
+    if (typeof d?.recolor === 'string') { if (mode === 'lobby' && room.recolor(p, d.recolor)) park?.recolor(); else room.welcome(p); return; }
     if (mode === 'game') ctx?.input(p, d);
     else if (mode === 'lobby' && park) park.input(p, d);
     else if (mode === 'lobby' && p.vip && d?.id === 'pick') start(GAMES.find((g) => g.meta.id === d.v));
@@ -252,7 +253,10 @@ function results(game: GameDef, r: GameResult, players: Player[]): Promise<'agai
   const rows = players.map((p) => ({ p, s: r.scores.find((x) => x.id === p.id), rank: 0, won: 0 })).sort((a, b) => (b.s?.score ?? -1e9) - (a.s?.score ?? -1e9));
   rows.forEach((row, i) => {
     row.rank = i > 0 && (row.s?.score ?? -1e9) === (rows[i - 1].s?.score ?? -1e9) ? rows[i - 1].rank : i;
-    row.won = row.s?.tickets ?? TICKETS[Math.min(row.rank, TICKETS.length - 1)];
+    // Players who tie share the prizes for the places they cover: two tied for 2nd split the 2nd and 3rd prizes.
+    const tied = rows.filter((x) => (x.s?.score ?? -1e9) === (row.s?.score ?? -1e9)).length;
+    const shared = Array.from({ length: tied }, (_, k) => TICKETS[Math.min(row.rank + k, TICKETS.length - 1)]).reduce((a, b) => a + b, 0) / tied;
+    row.won = row.s?.tickets ?? Math.round(shared);
     row.p.tickets += row.won;
     room.welcome(row.p);
   });

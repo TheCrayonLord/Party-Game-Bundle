@@ -335,3 +335,4 @@ body.host { font-size: clamp(14px, 1.5vw, 26px); }
 .beam.l { left: 0; clip-path: polygon(0 0, 8% 0, 100% 100%, 45% 100%); } .beam.r { right: 0; clip-path: polygon(92% 0, 100% 0, 55% 100%, 0 100%); }
 .finale .podium { min-height: 15em; }
 .credits { z-index: 10; }
+img.mascot-face.model { width: 4.6em; height: 4.6em; font-size: 1em; object-fit: contain; flex: none; margin: -.6em -.4em -.4em -.6em; }

@@ -91,6 +91,6 @@ export const agent: GameDef = {
     await ctx.sleep(7);
     const spyWins = result.spyWins;
     return { headline: spyWins ? '🔮 Secret Agent: the spy got away' : '🔮 Secret Agent: spy caught',
-      scores: P.map((p) => { const win = (p === spy) === spyWins; return { id: p.id, score: win ? 1 : 0, label: `${p === spy ? '🕵️ spy' : role.get(p.id)} · ${win ? 'won' : 'lost'}`, tickets: win ? (p === spy ? 120 : 80) : 25 }; }) };
+      scores: P.map((p) => { const win = (p === spy) === spyWins; return { id: p.id, score: win ? 1 : 0, label: `${p === spy ? '🕵️ spy' : role.get(p.id)} · ${win ? 'won' : 'lost'}`, tickets: win ? (p === spy ? 120 : 80) : 45 }; }) };
   },
 };

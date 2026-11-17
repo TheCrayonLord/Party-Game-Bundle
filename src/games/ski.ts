@@ -2,6 +2,8 @@
 // bigger groups race in heats and the best times win.
 import * as THREE from 'three';
 import { clamp, h, ordinal, pick, shuffle } from '../core/util';
+import { quality } from '../core/models';
+import { skierDetailed } from '../core/details';
 import type { Ctx, GameDef, Score } from '../host/ctx';
 import type { Player } from '../host/room';
 
@@ -148,10 +150,13 @@ async function heat(ctx: Ctx, hill: Hill, racers: Player[]): Promise<Map<string,
   const skiers: Skier[] = racers.map((p, i) => {
     const g = new THREE.Group();
     const add = (geo: THREE.BufferGeometry, c: string, x: number, y: number, z: number) => { const m = new THREE.Mesh(geo, mat(c)); m.position.set(x, y, z); g.add(m); return m; };
-    add(new THREE.BoxGeometry(1, 1.5, 0.7), p.color, 0, 1.6, 0).rotation.x = -0.35;        // jacket, leaning into the hill
-    add(new THREE.SphereGeometry(0.5, 8, 6), '#f3dcc0', 0, 2.75, -0.35);
-    add(new THREE.SphereGeometry(0.53, 8, 6, 0, Math.PI * 2, 0, Math.PI / 2), p.color, 0, 2.8, -0.35);   // hat
-    for (const sx of [-0.3, 0.3]) { add(new THREE.BoxGeometry(0.3, 0.9, 0.4), '#2b1d2e', sx, 0.6, 0.05); add(new THREE.BoxGeometry(0.22, 0.08, 2.8), '#e8b23a', sx, 0.1, -0.2); }
+    if (quality.detailed) g.add(skierDetailed(p.color));
+    else {
+      add(new THREE.BoxGeometry(1, 1.5, 0.7), p.color, 0, 1.6, 0).rotation.x = -0.35;        // jacket, leaning into the hill
+      add(new THREE.SphereGeometry(0.5, 8, 6), '#f3dcc0', 0, 2.75, -0.35);
+      add(new THREE.SphereGeometry(0.53, 8, 6, 0, Math.PI * 2, 0, Math.PI / 2), p.color, 0, 2.8, -0.35);   // hat
+      for (const sx of [-0.3, 0.3]) { add(new THREE.BoxGeometry(0.3, 0.9, 0.4), '#2b1d2e', sx, 0.6, 0.05); add(new THREE.BoxGeometry(0.22, 0.08, 2.8), '#e8b23a', sx, 0.1, -0.2); }
+    }
     scene.add(g);
     if (hill.night) { const lamp = new THREE.PointLight('#fff1c9', 130, 34, 1.5); lamp.position.set(0, 3, -8); g.add(lamp); }
     const line = h('div', { style: { display: 'contents' } }), miss = h('span.ski-miss', { hidden: true }, `Missed gate! +${MISS}s`);

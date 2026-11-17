@@ -105,6 +105,18 @@ export class Room {
     return moved;
   }
 
+  /** Gives a player another colour, if no other person has it (a bot holding it swaps). Returns true if it changed. */
+  recolor(p: Player, wanted: string): boolean {
+    const wi = COLORS.indexOf(wanted);
+    if (wi < 0 || p.color === wanted || p.spectator) return false;
+    const holder = this.players.find((x) => x.color === wanted);
+    if (holder && !holder.bot) return false;
+    if (holder) { holder.color = p.color; holder.shape = p.shape; }
+    p.color = wanted; p.shape = SHAPES[wi];
+    this.welcome(p); this.onChange();
+    return true;
+  }
+
   buzz(p: Player, kind: 'hit' | 'good' | 'turn') {
     if (p.cid) this.net.send(p.cid, { t: 'buzz', kind } satisfies ToPhone);
   }

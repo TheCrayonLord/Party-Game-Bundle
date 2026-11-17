@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import { clamp, h } from '../core/util';
+import { quality } from '../core/models';
+import { planeDetailed } from '../core/details';
 import type { Ctx, GameDef } from '../host/ctx';
 import type { Player } from '../host/room';
 
@@ -55,7 +57,7 @@ export const skyslalom: GameDef = {
     const n = ctx.players.length;
     const planes: Plane[] = ctx.players.map((p, i) => {
       const g = new THREE.Group();
-      g.add(new THREE.Mesh(paper(), new THREE.MeshLambertMaterial({ color: p.color, side: THREE.DoubleSide, flatShading: true })));
+      g.add(quality.detailed ? planeDetailed(p.color) : new THREE.Mesh(paper(), new THREE.MeshLambertMaterial({ color: p.color, side: THREE.DoubleSide, flatShading: true })));
       scene.add(g);
       const x = n > 1 ? -XR * 0.8 + (i / (n - 1)) * XR * 1.6 : 0;
       return { p, mesh: g, x, y: 8 + (i % 3) * 3, vx: 0, vy: 0, tx: 0, ty: 0, score: 0, streak: 0, aimX: 0, aimY: 0, live: '' };
@@ -82,7 +84,7 @@ export const skyslalom: GameDef = {
         const since = clock - gustAt, warning = since < WARN, blowing = !warning && since < WARN + BLOW;
         const sign = clock < -0.5 ? String(Math.ceil(-clock - 0.5)) : clock < 0.5 ? 'FLY!' : warning || blowing ? (gust > 0 ? '💨 Gust! ➡' : '⬅ Gust! 💨') : '';
         if (sign !== overlay.textContent) { overlay.textContent = sign; if (sign === 'FLY!') ctx.sfx('go'); else if (sign.length === 1) ctx.sfx('count'); else if (sign) ctx.sfx('whoosh'); }
-        overlay.style.fontSize = clock > 0.5 ? '3em' : ''; overlay.style.alignItems = clock > 0.5 ? 'start' : '';
+        overlay.style.fontSize = clock > 0.5 ? '3em' : ''; overlay.style.alignItems = clock > 0.5 ? 'start' : ''; overlay.style.paddingTop = clock > 0.5 ? '0.6em' : '';
         // The label swells twice as a warning; then it slides the way the wind blows while the planes are pushed.
         overlay.style.transform = clock < 0.5 ? '' : warning ? `scale(${1 + 0.45 * Math.abs(Math.sin((since / WARN) * Math.PI * 2))})` : blowing ? `translateX(${gust * (since - WARN) * 6}%)` : '';
         if (clock > 0 && since > WARN + BLOW + 7 && Math.random() < dt * 0.25) { gust = Math.random() < 0.5 ? -1 : 1; gustAt = clock; }   // now and then, wind shoves everyone sideways
@@ -130,7 +132,7 @@ export const skyslalom: GameDef = {
       });
     });
     const order = [...planes].sort((a, b) => b.score - a.score);
-    overlay.style.fontSize = ''; overlay.style.alignItems = ''; overlay.style.transform = '';
+    overlay.style.fontSize = ''; overlay.style.alignItems = ''; overlay.style.transform = ''; overlay.style.paddingTop = '';
     overlay.textContent = `${order[0].p.avatar} ${order[0].p.name} wins!`;
     ctx.wait(ctx.players, 'Landed!', '', '🛬');
     await ctx.sleep(3.5);

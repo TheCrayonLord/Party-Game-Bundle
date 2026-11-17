@@ -75,7 +75,8 @@ function onMsg(m: ToPhone) {
   if (m.t === 'welcome') {
     me = m;
     ticket.style.borderLeft = `14px solid ${m.color}`;
-    ticket.replaceChildren(h('div.ticket-av', { style: { background: m.color } }, m.avatar), h('div.ticket-name', `${m.shape} ${m.name}${m.vip ? ' 🎩' : ''}`), h('div.ticket-tix', `${m.tickets} 🎟️`));
+    const paint = h('button.ticket-paint', { title: 'Change colour', onclick: pickColour }, '🎨');
+    ticket.replaceChildren(paint, h('div.ticket-av', { style: { background: m.color } }, m.avatar), h('div.ticket-name', `${m.shape} ${m.name}${m.vip ? ' 🎩' : ''}`), h('div.ticket-tix', `${m.tickets} 🎟️`));
     if (!ticket.isConnected) app.replaceChildren(ticket, screen);
   } else if (m.t === 'view') show(m.v);
   else if (m.t === 'live') liveEls(m.l);
@@ -92,7 +93,16 @@ function buzz(kind: 'hit' | 'good' | 'turn') {
   setTimeout(() => f.remove(), 500);
 }
 
+/** The colour picker, reachable from the ticket header while in the lobby. */
+function pickColour() {
+  const sheet = h('div.overlay.sheet', h('h2', 'Pick a new colour'), h('div.colors', ...COLORS.map((c) =>
+    h('button' + (c === me?.color ? '.on' : ''), { style: { background: c }, 'data-color': c, onclick: () => { net?.send({ t: 'in', d: { recolor: c } }); store.set('color', c); sheet.remove(); } }))),
+    h('p.sub', 'Colours other people already have can’t be taken.'), h('button.btn', { onclick: () => sheet.remove() }, 'Cancel'));
+  document.body.append(sheet);
+}
+
 function show(v: View) {
+  document.body.classList.toggle('in-lobby', v.type === 'walk' || v.key.startsWith('lobby'));      // colour can only change between rides
   document.body.classList.toggle('keep-portrait', v.type === 'tilt');      // tilting must not flip the layout
   if (v.key !== curKey) {
     curKey = v.key;

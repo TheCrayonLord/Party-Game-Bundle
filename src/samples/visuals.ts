@@ -1,7 +1,7 @@
 // A look at "buffed up" visuals: the models the game uses now (top row) next to versions built from
 // many more small pieces, with soft shadows (bottom row). Nothing here is used by the game yet.
 import * as THREE from 'three';
-import { MASCOT_DRAFTS } from './mascots';
+import { MASCOT_DRAFTS } from '../core/mascots3d';
 import { boatDetailed, boatNow, garageDetailed, garageNow, guestDetailed, guestNow, kartDetailed, kartNow } from '../core/models';
 
 const app = document.getElementById('app')!;

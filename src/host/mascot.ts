@@ -1,4 +1,6 @@
 // The park's announcer. A different mascot hosts each session; add more by adding to MASCOTS.
+import { quality } from '../core/models';
+import { portrait } from '../core/mascots3d';
 import { h, pick, qs } from '../core/util';
 
 /** Things that happen during a game that the mascot may remark on. {name} is the player involved. */
@@ -117,10 +119,16 @@ export function nextMascot() {
   try { localStorage.setItem('pgb-mascot', mascot.id); } catch { /* storage blocked */ }
 }
 
+/** The mascot's face: a picture of the 3D model in Regular start, the emoji in Performance start. */
+function face(): HTMLElement {
+  const src = quality.detailed ? portrait(mascot.id) : '';
+  return src ? h('img.mascot-face.model', { src, alt: mascot.name }) : h('div.mascot-face', mascot.emoji);
+}
+
 /** The mascot with a speech bubble. */
 export function say(kind: 'lobby' | 'intro' | 'results', onclick?: () => void): HTMLElement {
   return h('div.mascot', { onclick, title: onclick ? 'Click to change mascot' : '' },
-    h('div.mascot-face', mascot.emoji), h('div.mascot-bubble', h('div.mascot-name', mascot.name), pick(mascot[kind])));
+    face(), h('div.mascot-bubble', h('div.mascot-name', mascot.name), pick(mascot[kind])));
 }
 
 /** Fills a line template for the current mascot. */
@@ -130,5 +138,5 @@ export function line(lines: string[], vars: Record<string, string | number> = {}
 
 /** The mascot saying something specific. */
 export function bubble(text: string): HTMLElement {
-  return h('div.mascot', h('div.mascot-face', mascot.emoji), h('div.mascot-bubble', h('div.mascot-name', mascot.name), text));
+  return h('div.mascot', face(), h('div.mascot-bubble', h('div.mascot-name', mascot.name), text));
 }

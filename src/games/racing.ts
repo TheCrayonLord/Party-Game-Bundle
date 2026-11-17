@@ -216,8 +216,30 @@ export async function runRace(ctx: Ctx, cfg: RaceConfig): Promise<Score[]> {
     const corners = [[-80, -46], [80, -46], [-80, 46], [80, 46]].map(([x, z]) => new THREE.Vector3(x, 0, z));
     for (let d = 80; d < 400; d += 5) {      // back the camera off until the whole course is in view
       cam.position.set(0, d * 0.86, d * 0.5); cam.lookAt(0, 0, 3); cam.updateMatrixWorld();
+      fullD = d;
       if (corners.every((c) => { const v = c.clone().project(cam); return Math.abs(v.x) < 0.94 && Math.abs(v.y) < 0.9; })) break;
     }
+    view.d = Math.min(view.d, fullD);
+  };
+  // The camera follows the people racing: it closes in while they are bunched up and backs off as they spread out,
+  // never further than the whole-course view.
+  let fullD = 200;
+  const view = { x: 0, z: 0, d: 400 };
+  const follow = (dt: number) => {
+    const people = racers.filter((k) => !k.ai && k.p.connected && k.finish == null);
+    const pack = people.length ? people : racers.filter((k) => k.finish == null);
+    let tx = 0, tz = 0, td = fullD;
+    if (pack.length) {
+      const xs = pack.map((k) => k.x), zs = pack.map((k) => k.z);
+      const x0 = Math.min(...xs), x1 = Math.max(...xs), z0 = Math.min(...zs), z1 = Math.max(...zs);
+      const need = Math.max((x1 - x0 + 70) / 170, (z1 - z0 + 60) / 102);      // the share of the whole-course view the pack needs
+      td = fullD * clamp(need, 0.42, 1);
+      const free = 1 - td / fullD;                                              // how far the view may drift from the centre
+      tx = clamp((x0 + x1) / 2, -85 * free, 85 * free); tz = clamp((z0 + z1) / 2, -51 * free, 51 * free);
+    }
+    const k = Math.min(1, dt * 1.6);
+    view.x += (tx - view.x) * k; view.z += (tz - view.z) * k; view.d += (td - view.d) * k;
+    cam.position.set(view.x, view.d * 0.86, view.z + view.d * 0.5); cam.lookAt(view.x, 0, view.z + 3);
   };
   fit(); addEventListener('resize', fit); ctx.onEnd(() => removeEventListener('resize', fit));
 
@@ -467,6 +489,7 @@ export async function runRace(ctx: Ctx, cfg: RaceConfig): Promise<Score[]> {
       }
       for (const k of racers) { k.mesh.scale.z = k.boost > 0 ? 2 : k.mesh.scale.x;
       }
+      follow(dt);
       renderer.render(scene, cam);
 
       if (t - lastHud > 0.25) {

@@ -145,6 +145,6 @@ export const heist: GameDef = {
     ctx.wait(P, won ? 'You’re rich!' : 'Busted!', '', won ? '💰' : '🚔');
     await ctx.sleep(4);
     const pts = cleared * 100 + (won ? Math.max(0, Math.ceil(left)) : 0);
-    return { coop: true, headline: won ? '💰 Heist Crew: clean getaway' : '🚔 Heist Crew: busted', scores: P.map((p) => ({ id: p.id, score: won ? 1 : 0, label: `${pts} crew points`, tickets: won ? 90 : 20 + cleared * 10 })) };
+    return { coop: true, headline: won ? '💰 Heist Crew: clean getaway' : '🚔 Heist Crew: busted', scores: P.map((p) => ({ id: p.id, score: won ? 1 : 0, label: `${pts} crew points`, tickets: Math.round(Math.max(20, Math.min(90, 20 + (40 * cleared) / puzzles.length + (won ? Math.min(30, left / 5) : 0) - strikes * 3))) })) };
   },
 };

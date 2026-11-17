@@ -78,6 +78,6 @@ export const dungeon: GameDef = {
     ctx.wait(P, survived ? 'Daylight!' : 'Wrecked!', '', survived ? '🌅' : '💀');
     await ctx.sleep(6);
     return { headline: survived ? '👻 Dungeon Vote: the passengers escape' : '👻 Dungeon Vote: the traitors win',
-      scores: P.map((p) => { const win = traitors.includes(p) !== survived; return { id: p.id, score: win ? 1 : 0, label: `${traitors.includes(p) ? '😈 traitor' : 'loyal'} · ${win ? 'won' : 'lost'}`, tickets: win ? (traitors.includes(p) ? 120 : 80) : 25 }; }) };
+      scores: P.map((p) => { const win = traitors.includes(p) !== survived; return { id: p.id, score: win ? 1 : 0, label: `${traitors.includes(p) ? '😈 traitor' : 'loyal'} · ${win ? 'won' : 'lost'}`, tickets: win ? (traitors.includes(p) ? 120 : 80) : 45 }; }) };
   },
 };

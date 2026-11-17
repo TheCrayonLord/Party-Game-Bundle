@@ -26,14 +26,14 @@ export function bake(g: THREE.Group): THREE.Group {
 const mats = new Map<string, THREE.Material>();
 const mat = (c: string) => { let m = mats.get(c); if (!m) mats.set(c, (m = new THREE.MeshLambertMaterial({ color: c, flatShading: true }))); return m; };
 /** Adds one piece to a group. */
-function P(g: THREE.Object3D, geo: THREE.BufferGeometry, c: string, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0) {
+export function P(g: THREE.Object3D, geo: THREE.BufferGeometry, c: string, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0) {
   const m = new THREE.Mesh(geo, mat(c)); m.position.set(x, y, z); m.rotation.set(rx, ry, rz); g.add(m); return m;
 }
-const box = (w: number, h: number, d: number) => new THREE.BoxGeometry(w, h, d);
-const cyl = (rt: number, rb: number, h: number, seg = 12) => new THREE.CylinderGeometry(rt, rb, h, seg);
-const ball = (r: number, seg = 12) => new THREE.SphereGeometry(r, seg, Math.max(6, seg - 4));
-const cone = (r: number, h: number, seg = 12) => new THREE.ConeGeometry(r, h, seg);
-const torus = (r: number, t: number, seg = 16) => new THREE.TorusGeometry(r, t, 6, seg);
+export const box = (w: number, h: number, d: number) => new THREE.BoxGeometry(w, h, d);
+export const cyl = (rt: number, rb: number, h: number, seg = 12) => new THREE.CylinderGeometry(rt, rb, h, seg);
+export const ball = (r: number, seg = 12) => new THREE.SphereGeometry(r, seg, Math.max(6, seg - 4));
+export const cone = (r: number, h: number, seg = 12) => new THREE.ConeGeometry(r, h, seg);
+export const torus = (r: number, t: number, seg = 16, arc = Math.PI * 2) => new THREE.TorusGeometry(r, t, 6, seg, arc);
 const INK = '#1b1220', CREAM = '#f6ead2', SKIN = '#f3dcc0', H = Math.PI / 2;
 
 // ---------------- the models the game uses now ----------------

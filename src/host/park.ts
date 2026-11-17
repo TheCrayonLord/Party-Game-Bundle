@@ -6,6 +6,9 @@ import type { GameDef } from './ctx';
 import type { Player, Room } from './room';
 import { isPaused } from './clock';
 import { garageDetailed, guestDetailed, quality } from '../core/models';
+import { boothDetail } from '../core/details';
+import { MASCOT_MODELS } from '../core/mascots3d';
+import { mascot } from './mascot';
 
 const ZONE_COLORS: Record<string, string> = { Speedway: '#c9553a', Lagoon: '#3f8fa6', 'Art Alley': '#d9a441', Midway: '#b0527a', 'Fortune Tent': '#6f5aa8', 'Haunted Manor': '#4f6b5a' };
 const XMAX = 50, ZMIN = -30, ZMAX = 33, SPEED = 15, PAD_R = 4.6;
@@ -22,7 +25,7 @@ const SPARE: [number, number, number][] = [[0, -26, 0], [10, 24, -10], [-6, 26, 
 type Tick = (t: number) => void;
 
 interface Booth { game: GameDef; x: number; z: number; px: number; pz: number; open: boolean; label: HTMLElement; count: HTMLElement; pad: THREE.Mesh; ring: THREE.Mesh; shut: THREE.Mesh; votes: number }
-interface Guest { p: Player; g: THREE.Group; x: number; z: number; mx: number; mz: number; face: number; tx: number; tz: number; think: number; at: Booth | null; live: string; legs?: THREE.Object3D[]; step: number }
+interface Guest { p: Player; g: THREE.Group; x: number; z: number; mx: number; mz: number; face: number; tx: number; tz: number; think: number; at: Booth | null; live: string; legs?: THREE.Object3D[]; step: number; color: string }
 
 export interface ParkOverlays { ticket: HTMLElement; mascot: HTMLElement; controls: HTMLElement }
 
@@ -42,6 +45,7 @@ export class Park {
   private last = performance.now();
   private alive = true;
   private countdown = 0;
+  private host: { id: string; g: THREE.Group } | null = null;      // tonight's mascot, standing by the gate
   private choiceKey = '';
 
   constructor(private root: HTMLElement, private room: Room, games: GameDef[], private fits: (g: GameDef) => boolean, private start: (g: GameDef) => void) {
@@ -267,6 +271,8 @@ export class Park {
       const [x, z, deg] = LAYOUT[game.meta.id] || SPARE[spare++ % SPARE.length], rot = (deg * Math.PI) / 180, color = ZONE_COLORS[game.meta.zone] || '#c9553a';
       const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = rot; this.scene.add(g);
       const tick = this.building(game.meta.id, g, color);
+      const extra = quality.detailed ? boothDetail(game.meta.id, color) : null;      // Regular start dresses every building up
+      if (extra) g.add(extra);
       if (tick) this.ticks.push(tick);
       // "Closed" boards across the front, shown when the group is the wrong size for this ride.
       const shut = this.box(g, 7, 0.9, 0.3, '#f4f0e6', 0, 2.6, 3.4); shut.rotation.z = -0.12; shut.visible = false;
@@ -299,6 +305,15 @@ export class Park {
 
   /** Called whenever the guest list changes: adds and removes characters, refreshes the overlays and which rides are open. */
   sync(o: ParkOverlays) {
+    if (quality.detailed && this.host?.id !== mascot.id) {      // the mascot on duty stands by the gate; swapping mascots swaps the model
+      if (this.host) { this.scene.remove(this.host.g); this.puff(this.host.g.position.x, this.host.g.position.z); }
+      const g = MASCOT_MODELS[mascot.id]?.();
+      if (g) {
+        g.scale.setScalar(1.15); g.position.set(-10.5, 0, 30.5); g.rotation.y = 0.5;
+        g.traverse((m) => { const mesh = m as THREE.Mesh; if (mesh.isMesh && !(mesh.material as THREE.Material).transparent) mesh.castShadow = true; });
+        this.scene.add(g); this.host = { id: mascot.id, g };
+      }
+    }
     this.overlay.replaceChildren(o.ticket, o.mascot, o.controls);
     const present = this.room.players.filter((p) => p.connected);
     for (const p of present) if (!this.guests.has(p.id)) this.spawn(p);
@@ -311,7 +326,12 @@ export class Park {
     for (const p of this.room.players) if (p.view.key !== 'park') this.room.setView(p, { type: 'walk', key: 'park' });
   }
 
-  private spawn(p: Player) {
+  /** Someone changed colour: rebuild any figure whose colour no longer matches its player. */
+  recolor() {
+    for (const [id, g] of [...this.guests]) if (g.color !== g.p.color) { const { x, z } = g; this.scene.remove(g.g); this.guests.delete(id); this.spawn(g.p, x, z); }
+  }
+
+  private spawn(p: Player, atX?: number, atZ?: number) {
     const g = new THREE.Group();
     let legs: THREE.Object3D[] | undefined;
     if (quality.detailed) { const body = guestDetailed(p.color); body.traverse((o) => { o.castShadow = true; }); g.add(body); legs = body.userData.legs; }
@@ -325,10 +345,10 @@ export class Park {
     const c = document.createElement('canvas'); c.width = c.height = 64;
     const cx = c.getContext('2d')!; cx.font = '46px sans-serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle'; cx.fillText(p.avatar, 32, 36);
     const tag = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), depthTest: false })); tag.scale.set(2.2, 2.2, 1); tag.position.y = 5.6; g.add(tag);
-    const x = SPAWN.x + (Math.random() - 0.5) * 10, z = SPAWN.z + (Math.random() - 0.5) * 4;
+    const x = atX ?? SPAWN.x + (Math.random() - 0.5) * 10, z = atZ ?? SPAWN.z + (Math.random() - 0.5) * 4;
     g.position.set(x, 0, z); g.scale.setScalar(0.01);
     this.scene.add(g);
-    this.guests.set(p.id, { p, g, x, z, mx: 0, mz: 0, face: Math.PI, tx: x, tz: z, think: 1 + Math.random() * 2, at: null, live: '', legs, step: Math.random() * 6 });
+    this.guests.set(p.id, { p, g, x, z, mx: 0, mz: 0, face: Math.PI, tx: x, tz: z, think: 1 + Math.random() * 2, at: null, live: '', legs, step: Math.random() * 6, color: p.color });
     this.puff(x, z);
   }
 
@@ -374,6 +394,7 @@ export class Park {
           if (d < 5 && d > 0.01) { g.x = b.x + (dx / d) * 5; g.z = b.z + (dz / d) * 5; }
         }
       }
+      if (this.host) { this.host.g.position.y = Math.abs(Math.sin(t * 1.6)) * 0.25; this.host.g.rotation.y = 0.5 + Math.sin(t * 0.7) * 0.25; }
       // Walking: legs swing from the hip and the body bobs with each step. The simple figures have no legs, so they waddle.
       if (moving) g.step += dt * 13;
       const swing = moving ? Math.sin(g.step) * 0.8 : 0;

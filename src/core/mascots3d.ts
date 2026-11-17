@@ -1,4 +1,4 @@
-// Draft 3D versions of the four mascots, built from small pieces. Not used by the game yet: see visuals.html?mascots.
+// 3D versions of the four mascots, built from small pieces. Regular start shows them in the park and beside their speech bubbles.
 import * as THREE from 'three';
 
 const cache = new Map<string, THREE.Material>();
@@ -158,3 +158,30 @@ export function bulb() {
 }
 
 export const MASCOT_DRAFTS: [string, () => THREE.Group][] = [['Gus the Goldfish', gus], ['Sprocket the Strongman Bear', sprocket], ['Colonel Kernel', kernel], ['Madame Bulb', bulb]];
+/** The model for each mascot id used in host/mascot.ts. */
+export const MASCOT_MODELS: Record<string, () => THREE.Group> = { gus, sprocket, kernel, bulb };
+
+// Where the portrait camera looks for each mascot: height of the face, and how far back to stand.
+const FRAME: Record<string, [number, number]> = { gus: [2.7, 9.5], sprocket: [3.6, 11], kernel: [3.9, 10.5], bulb: [4.9, 10.5] };
+const portraits = new Map<string, string>();
+/** A small picture of a mascot, rendered once and reused. Returns '' if the browser can't draw it. */
+export function portrait(id: string): string {
+  const done = portraits.get(id); if (done != null) return done;
+  let url = '';
+  try {
+    const make = MASCOT_MODELS[id], [y, d] = FRAME[id] ?? [3.5, 10];
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+    renderer.setSize(220, 220, false);
+    const scene = new THREE.Scene();
+    scene.add(new THREE.HemisphereLight('#fff1dc', '#6a4a7a', 1.7));
+    const key = new THREE.DirectionalLight('#ffe0b8', 2); key.position.set(-6, 10, 12); scene.add(key);
+    const m = make(); m.rotation.y = -0.3; scene.add(m);
+    const cam = new THREE.PerspectiveCamera(30, 1, 0.5, 100); cam.position.set(0, y + 1.2, d); cam.lookAt(0, y, 0);
+    renderer.render(scene, cam);
+    url = renderer.domElement.toDataURL('image/png');
+    scene.traverse((o: any) => { o.geometry?.dispose?.(); });
+    renderer.dispose(); renderer.forceContextLoss();
+  } catch { /* no WebGL: the emoji stands in */ }
+  portraits.set(id, url);
+  return url;
+}
