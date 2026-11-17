@@ -364,3 +364,8 @@ img.mascot-face.model { width: 7.6em; height: 7.6em; margin: -.9em -.5em -.5em -
 .finale .podium { position: relative; }
 .bear { left: calc(100% + .05em); bottom: 0; font-size: 6.5em; }
 .finale .stage { overflow: visible; }      /* the in-game .stage clips its contents; this one must not */
+
+/* park: the instruction sits at the top so it never covers the gate; the ride about to start pulses */
+.park-banner { top: .6em; bottom: auto; font-size: .95em; max-width: 44%; padding: .25em 1em; }
+.park-label.go { background: var(--mustard); animation: pulse .5s infinite alternate; z-index: 2; }
+.park-banner { left: 45%; max-width: 38%; font-size: .85em; }

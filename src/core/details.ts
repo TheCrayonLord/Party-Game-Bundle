@@ -316,3 +316,46 @@ export function gateAndFence(halfWidth: number, depth: number, rich: boolean): {
   if (rich) { run(-halfWidth, 0.5, -halfWidth, -depth); run(halfWidth, 0.5, halfWidth, -depth); }
   return { model: bake(g), bulbs };
 }
+
+/**
+ * A carousel. `turn` is the part that goes round (platform, roof, poles and horses); each horse is its own
+ * piece so it can rise and fall on its pole.
+ */
+export function carousel(): { root: THREE.Group; turn: THREE.Group; horses: THREE.Group[] } {
+  const root = new THREE.Group(), turn = new THREE.Group(), horses: THREE.Group[] = [];
+  const fixed = new THREE.Group();
+  P(fixed, cyl(14.5, 15.2, 0.8, 24), '#8a6a45', 0, 0.4, 0);                         // plinth
+  for (let i = 0; i < 12; i++) { const a = (i / 12) * Math.PI * 2; P(fixed, box(1.2, 0.5, 0.4), i % 2 ? CREAM : RED, Math.cos(a) * 15, 0.5, Math.sin(a) * 15, 0, -a + H, 0); }
+  root.add(bake(fixed));
+
+  const t = new THREE.Group();
+  P(t, cyl(13.4, 13.4, 0.5, 24), '#c9a574', 0, 1.05, 0);                            // the deck that turns
+  P(t, cyl(2.2, 2.6, 9.4, 12), CREAM, 0, 5.9, 0);                                   // centre drum
+  for (let i = 0; i < 8; i++) { const a = (i / 8) * Math.PI * 2; P(t, box(1.1, 3.2, 0.2), i % 2 ? GOLD : '#2ab7a9', Math.cos(a) * 2.45, 5.6, Math.sin(a) * 2.45, 0, -a + H, 0); P(t, ball(0.24, 6), '#ffe9a8', Math.cos(a + 0.39) * 2.5, 8.2, Math.sin(a + 0.39) * 2.5); }
+  // the roof: red and cream wedges under a gold crown, with a scalloped edge and a ring of bulbs
+  for (let i = 0; i < 16; i++) {
+    const a = (i / 16) * Math.PI * 2 + Math.PI / 16;
+    const wedge = P(t, new THREE.CylinderGeometry(0.2, 15, 6.4, 1, 1, true, 0, Math.PI / 8), i % 2 ? CREAM : RED, 0, 13.6, 0, 0, a, 0); void wedge;
+    P(t, cone(1.5, 1.6, 6), i % 2 ? RED : CREAM, Math.sin(a + Math.PI / 16) * 14.6, 10.1, Math.cos(a + Math.PI / 16) * 14.6, Math.PI);
+    P(t, ball(0.34, 6), '#ffe9a8', Math.sin(a) * 15, 10.5, Math.cos(a) * 15);
+  }
+  P(t, cyl(15.1, 15.1, 0.5, 24), GOLD, 0, 10.6, 0); P(t, cyl(1.2, 2.0, 1.2, 10), GOLD, 0, 17.2, 0); P(t, ball(1.0, 10), '#ffe9a8', 0, 18.4, 0);
+  P(t, cyl(0.08, 0.08, 2.6, 5), DARKWOOD, 0, 20, 0); P(t, cone(1.0, 2.0, 3), RED, 1.0, 20.8, 0, 0, 0, -H).scale.z = 0.12;
+  const N = 10;
+  for (let i = 0; i < N; i++) {
+    const a = (i / N) * Math.PI * 2, r = i % 2 ? 10.6 : 8.2, x = Math.cos(a) * r, z = Math.sin(a) * r;
+    P(t, cyl(0.1, 0.1, 9.4, 6), GOLD, x, 5.9, z);                                    // the pole
+    const hg = new THREE.Group(), c = ['#f6ead2', '#f15bb5', '#4cc9f0', '#ffe14d', '#a8c256'][i % 5];
+    P(hg, box(0.8, 0.9, 2.2), c, 0, 0, 0);                                          // body
+    P(hg, box(0.5, 1.2, 0.7), c, 0, 0.8, 1.0, -0.5); P(hg, box(0.44, 0.5, 0.9), c, 0, 1.3, 1.5, 0.3);      // neck and head
+    P(hg, box(0.14, 1.0, 0.3), GOLD, 0, 1.05, 0.7, -0.5); P(hg, cone(0.26, 0.9, 5), GOLD, 0, 0.1, -1.3, -2.2);   // mane and tail
+    for (const [lx, lz, rx] of [[-0.26, 0.8, 0.5], [0.26, 0.8, 0.2], [-0.26, -0.8, -0.3], [0.26, -0.8, -0.6]]) P(hg, box(0.2, 1.1, 0.2), c, lx, -0.9, lz, rx);
+    P(hg, box(0.86, 0.3, 0.8), RED, 0, 0.5, -0.1);                                  // saddle
+    const horse = bake(hg); horse.position.set(x, 3.6, z); horse.rotation.y = -a;   // facing the way the deck turns
+    horse.userData.phase = i * 1.3;
+    turn.add(horse); horses.push(horse);
+  }
+  turn.add(bake(t));
+  root.add(turn);
+  return { root, turn, horses };
+}

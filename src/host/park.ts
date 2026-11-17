@@ -6,7 +6,7 @@ import type { GameDef } from './ctx';
 import type { Player, Room } from './room';
 import { isPaused } from './clock';
 import { garageDetailed, guestDetailed, quality } from '../core/models';
-import { boothDetail, gateAndFence } from '../core/details';
+import { boothDetail, carousel, gateAndFence } from '../core/details';
 import { MASCOT_MODELS } from '../core/mascots3d';
 import { mascot } from './mascot';
 
@@ -45,6 +45,10 @@ export class Park {
   private last = performance.now();
   private alive = true;
   private countdown = 0;
+  private amb!: THREE.AmbientLight;
+  private sun!: THREE.DirectionalLight;
+  private cabins: THREE.Object3D[] = [];
+  private wheel: THREE.Object3D | null = null;
   private host: { id: string; g: THREE.Group } | null = null;      // tonight's mascot, standing by the gate
   private choiceKey = '';
 
@@ -54,8 +58,9 @@ export class Park {
     renderer.domElement.className = 'park-canvas';
     scene.background = new THREE.Color('#3b2752');
     scene.fog = new THREE.Fog('#6d3566', 110, 230);
-    scene.add(new THREE.AmbientLight('#ffdcc0', 1.35));
+    const amb = new THREE.AmbientLight('#ffdcc0', 1.35); scene.add(amb);
     const sun = new THREE.DirectionalLight('#ffab73', 1.5); sun.position.set(-30, 60, 40); scene.add(sun);
+    this.amb = amb; this.sun = sun;
     root.replaceChildren(h('div.park', renderer.domElement, this.labels, this.banner, this.overlay));
     this.buildScenery();
     this.buildBooths(games);
@@ -142,11 +147,16 @@ export class Park {
     for (let i = 0; i < 8; i++) {
       const a = (i / 8) * Math.PI * 2;
       if (i < 4) this.box(wheel, 24, 0.35, 0.35, '#d8c9a6').rotation.z = a;
-      this.box(wheel, 2.6, 2.2, 2, ['#c9553a', '#d9a441', '#3f8fa6', '#b0527a'][i % 4], Math.cos(a) * 12, Math.sin(a) * 12, 0);
+      const cabin = new THREE.Group(); cabin.position.set(Math.cos(a) * 12, Math.sin(a) * 12, 0); wheel.add(cabin); this.cabins.push(cabin);
+      const cc = ['#c9553a', '#d9a441', '#3f8fa6', '#b0527a'][i % 4];
+      this.box(cabin, 2.6, 1.5, 2, cc, 0, -1.5, 0); this.box(cabin, 3, 0.3, 2.4, '#f4f0e6', 0, 0.4, 0); this.box(cabin, 0.16, 1.6, 0.16, '#d8c9a6', -1.1, -0.3, 0); this.box(cabin, 0.16, 1.6, 0.16, '#d8c9a6', 1.1, -0.3, 0);
     }
-    s.add(wheel); this.spinners.push(wheel);
+    s.add(wheel); this.spinners.push(wheel); this.wheel = wheel;
     for (const x of [30, 38]) this.box(s, 0.8, 17, 0.8, '#5b4636', x, 8, -42).rotation.z = x < 34 ? -0.25 : 0.25;
-    this.cyl(s, 13, 13, 6, '#e7d7b1', -30, 3, -46, 12); this.cone(s, 14.5, 9, '#c9553a', -30, 10.5, -46, 12); this.ball(s, 0.8, this.lit('#ffe2a0'), -30, 15.5, -46);
+    {      // the carousel: it turns slowly and its horses rise and fall
+      const c = carousel(); c.root.position.set(-30, 0, -46); s.add(c.root);
+      this.ticks.push((t) => { c.turn.rotation.y = t * 0.16; for (const hh of c.horses) hh.position.y = 3.6 + Math.sin(t * 1.4 + hh.userData.phase) * 0.9; });
+    }
     for (let i = 0; i < 30; i++) {      // scruffy trees round the edge
       const side = i % 2 ? 1 : -1, x = side * (XMAX + 5 + (i * 7) % 16), z = ZMIN - 8 + ((i * 13) % 74), hgt = 5 + (i % 4);
       this.cyl(s, 0.4, 0.5, 3, '#5b4636', x, 1.5, z, 5); this.cone(s, 2.6 + (i % 3) * 0.4, hgt, i % 3 ? '#3f5a49' : '#4d6248', x, 3 + hgt / 2, z, 6);
@@ -333,6 +343,32 @@ export class Park {
     for (const p of this.room.players) if (p.view.key !== 'park') this.room.setView(p, { type: 'walk', key: 'park' });
   }
 
+  /**
+   * The park's day: dusk, night, dawn, day and back to dusk, slowly. Sky, haze and both lights blend between
+   * these moments, and the sun swings round so the shadows move.
+   */
+  private daylight(t: number) {
+    const DAY = 260;      // seconds for one whole day
+    t += this.dayStart * DAY;
+    const KEYS: [string, string, string, number, string, number][] = [      // sky, haze, ambient colour and strength, sun colour and strength
+      ['#3b2752', '#6d3566', '#ffdcc0', 1.35, '#ffab73', 1.5],      // dusk
+      ['#0a0f26', '#161c3c', '#8fa4ff', 0.85, '#a9b9ff', 0.55],     // night
+      ['#e79a78', '#d99a8c', '#ffe0cc', 1.25, '#ffc08a', 1.3],      // dawn
+      ['#86c8ea', '#b6dcee', '#ffffff', 1.55, '#fff2d6', 1.9],      // day
+    ];
+    const f = ((t / DAY) % 1) * KEYS.length, i = Math.floor(f), a = KEYS[i], b = KEYS[(i + 1) % KEYS.length];
+    const k = f - i, e = k * k * (3 - 2 * k);      // ease in and out of each moment
+    const mix = (x: string, y: string, into: THREE.Color) => into.lerpColors(this.tmpA.set(x), this.tmpB.set(y), e);
+    mix(a[0], b[0], this.scene.background as THREE.Color); mix(a[1], b[1], (this.scene.fog as THREE.Fog).color);
+    mix(a[2], b[2], this.amb.color); this.amb.intensity = a[3] + (b[3] - a[3]) * e;
+    mix(a[4], b[4], this.sun.color); this.sun.intensity = a[5] + (b[5] - a[5]) * e;
+    const ang = (t / DAY) * Math.PI * 2;
+    this.sun.position.set(-30 * Math.cos(ang) - 20 * Math.sin(ang), 60, 40 + 18 * Math.sin(ang));
+  }
+  private tmpA = new THREE.Color(); private tmpB = new THREE.Color();
+  /** Where in the day the park opens (0 = dusk, 0.25 = night, 0.5 = dawn, 0.75 = day); ?time= sets it, for looking at each. */
+  private dayStart = Number(new URLSearchParams(location.search).get('time')) || 0;
+
   /** Someone changed colour: rebuild any figure whose colour no longer matches its player. */
   recolor() {
     for (const [id, g] of [...this.guests]) if (g.color !== g.p.color) { const { x, z } = g; this.scene.remove(g.g); this.guests.delete(id); this.spawn(g.p, x, z); }
@@ -349,6 +385,14 @@ export class Park {
       this.add(new THREE.SphereGeometry(0.22, 5, 4), this.mat('#2b1d2e'), 0, 2.95, 0.8, g);                     // nose, so you can see which way they face
     }
     const shadow = this.add(new THREE.CircleGeometry(1.2, 12), new THREE.MeshBasicMaterial({ color: '#000', transparent: true, opacity: 0.22 }), 0, 0.05, 0, g); shadow.rotation.x = -Math.PI / 2;
+    {      // a name tag in the player's colour, so everyone can find themselves
+      const c = document.createElement('canvas'); c.width = 256; c.height = 64;
+      const cx = c.getContext('2d')!; cx.font = 'bold 34px system-ui, sans-serif';
+      const w = Math.min(244, cx.measureText(p.name).width + 36);
+      cx.fillStyle = p.color; cx.strokeStyle = '#1b1220'; cx.lineWidth = 5; cx.beginPath(); cx.roundRect(128 - w / 2, 8, w, 48, 24); cx.fill(); cx.stroke();
+      cx.fillStyle = '#1b1220'; cx.textAlign = 'center'; cx.textBaseline = 'middle'; cx.fillText(p.name, 128, 33);
+      const tag = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), depthTest: false })); tag.scale.set(5.2, 1.3, 1); tag.position.y = 6.3; tag.renderOrder = 4; g.add(tag);
+    }
     const x = atX ?? SPAWN.x + (Math.random() - 0.5) * 10, z = atZ ?? SPAWN.z + (Math.random() - 0.5) * 4;
     g.position.set(x, 0, z); g.scale.setScalar(0.01);
     this.scene.add(g);
@@ -403,8 +447,8 @@ export class Park {
       if (moving) g.step += dt * 13;
       const swing = moving ? Math.sin(g.step) * 0.8 : 0;
       if (g.legs) { g.legs[0].rotation.x += (swing - g.legs[0].rotation.x) * Math.min(1, dt * 20); g.legs[1].rotation.x += (-swing - g.legs[1].rotation.x) * Math.min(1, dt * 20); }
-      g.g.rotation.z = g.legs ? swing * 0.05 : swing * 0.16;
-      g.g.position.set(g.x, moving ? Math.abs(Math.sin(g.step)) * (g.legs ? 0.14 : 0.35) : 0, g.z);
+      g.g.rotation.z = moving ? (g.legs ? swing * 0.05 : swing * 0.16) : Math.sin(t * 1.3 + g.step) * 0.035;      // standing guests sway a little
+      g.g.position.set(g.x, moving ? Math.abs(Math.sin(g.step)) * (g.legs ? 0.14 : 0.35) : Math.abs(Math.sin(t * 1.9 + g.step)) * 0.06, g.z);
       g.g.rotation.y += Math.atan2(Math.sin(g.face - g.g.rotation.y), Math.cos(g.face - g.g.rotation.y)) * Math.min(1, dt * 12);
       g.g.scale.setScalar(Math.min(1.35, g.g.scale.x + dt * 4));            // grow out of the smoke
       g.at = this.booths.find((b) => b.open && (g.x - b.px) ** 2 + (g.z - b.pz) ** 2 < PAD_R * PAD_R) || null;
@@ -432,6 +476,7 @@ export class Park {
     const choice = n > 0 && top > n / 2 ? leaders : n > 0 && decided > n / 2 && leaders.length > 1 ? leaders : [];
     const key = choice.map((b) => b.game.meta.id).join();
     if (key !== this.choiceKey) { this.choiceKey = key; this.countdown = choice.length > 1 ? 4.5 : 3.5; }
+    for (const b of this.booths) b.label.classList.toggle('go', choice.includes(b));      // the ride about to start pulses
     if (choice.length) {
       this.countdown -= dt;
       const secs = Math.max(1, Math.ceil(this.countdown));
@@ -449,6 +494,8 @@ export class Park {
       if (p.life <= 0) { this.scene.remove(p.m); p.m.geometry.dispose(); (p.m.material as THREE.Material).dispose(); this.puffs.splice(i, 1); }
     }
     for (const s of this.spinners) s.rotation.z = t * 0.15;
+    if (this.wheel) for (const c of this.cabins) c.rotation.z = -this.wheel.rotation.z;      // cabins hang level as the wheel turns
+    this.daylight(t);
     for (const tick of this.ticks) tick(t);
     this.renderer.render(this.scene, this.cam);
     this.raf = requestAnimationFrame(this.frame);
