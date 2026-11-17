@@ -64,7 +64,7 @@ async function boot() {
     if (typeof d?.recolor === 'string') { if (mode === 'lobby' && room.recolor(p, d.recolor)) park?.recolor(); else room.welcome(p); return; }
     if (mode === 'game') ctx?.input(p, d);
     else if (mode === 'lobby' && park) park.input(p, d);
-    else if (mode === 'lobby' && p.vip && d?.id === 'pick') start(GAMES.find((g) => g.meta.id === d.v));
+    else if (mode === 'lobby' && p.vip && d?.id === 'pick') start(d.v === 'random' ? surprise() : GAMES.find((g) => g.meta.id === d.v));
     else if (mode === 'results' && p.vip && d?.id === 'back') resultsDone?.(d.v === 'again' ? 'again' : 'park');
     else if (mode === 'ending') closing?.input(p, d);
   };
@@ -79,6 +79,7 @@ async function boot() {
     setMenu: (m) => { if (m === menu) return; menu = m; if (mode === 'lobby') { park?.destroy(); park = null; lobby(); } },
     canEditGuests: () => mode === 'lobby',
     botsChanged: () => { if (mode === 'lobby') lobby(); },
+    parkChanged: () => { if (mode === 'lobby' && park) { park.destroy(); park = null; lobby(); } },
   });
   lobby();
   const auto = qs.get('game'); // ?game=id starts straight away; handy for testing with ?bots=
@@ -92,6 +93,13 @@ function joinUrl(net: HostNet) {
   u.searchParams.set('net', net.kind);
   for (const k of ['relay', 'peerhost', 'peerport']) if (qs.get(k)) u.searchParams.set(k, qs.get(k)!);
   return u.href;
+}
+
+/** A random ride that suits the group, avoiding the one just played when there is a choice. */
+function surprise(): GameDef | undefined {
+  const open = GAMES.filter(fits), fresh = open.filter((g) => g.meta.id !== night.played[night.played.length - 1]?.game.id);
+  const from = fresh.length ? fresh : open;
+  return from[Math.floor(Math.random() * from.length)];
 }
 
 const fits = (g: GameDef) => room.players.length >= g.meta.min && room.players.length <= g.meta.max;
@@ -140,7 +148,7 @@ function lobby() {
   );
 
   const zones = [...new Set(GAMES.map((g) => g.meta.zone))];
-  const rides = h('div.rides', ...zones.map((z) => h('div.zone', h('h3', z),
+  const rides = h('div.rides', h('button.btn.small.surprise', { disabled: !GAMES.some(fits), onclick: () => start(surprise()), 'data-game': 'random' }, '🎲 Surprise me'), ...zones.map((z) => h('div.zone', h('h3', z),
     h('div.zone-rides', ...GAMES.filter((g) => g.meta.zone === z).map((g) => {
       const ok = fits(g);
       return h('button.ride' + (ok ? '' : '.closed'), { disabled: !ok, onclick: () => start(g), 'data-game': g.meta.id },
@@ -153,7 +161,7 @@ function lobby() {
   const open = GAMES.filter(fits);
   for (const p of room.players) {
     if (p.vip) room.setView(p, open.length
-      ? { type: 'choice', key: 'lobby-vip-' + open.map((g) => g.meta.id).join(), id: 'pick', prompt: 'Pick an attraction', sub: 'You’re the host: everyone follows you.', options: open.map((g) => ({ id: g.meta.id, label: g.meta.name })) }
+      ? { type: 'choice', key: 'lobby-vip-' + open.map((g) => g.meta.id).join(), id: 'pick', prompt: 'Pick an attraction', sub: 'You’re the host: everyone follows you.', options: [{ id: 'random', label: '🎲 Surprise me' }, ...open.map((g) => ({ id: g.meta.id, label: g.meta.name }))] }
       : { type: 'wait', key: 'lobby-vip-none', title: 'You’re the host!', text: 'Waiting for more guests before any ride can open.', emoji: '🎩' });
     else if (p.view.key !== 'lobby') room.setView(p, { type: 'wait', key: 'lobby', title: 'You’re in!', text: 'Watch the big screen. The host picks the ride.', emoji: '🎟️' });
   }

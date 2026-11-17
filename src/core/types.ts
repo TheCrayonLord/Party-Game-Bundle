@@ -8,7 +8,7 @@ export interface Option { id: string; label: string }
  * renders it with the shared controller kit, so most games need no phone code.
  * `key` identifies the screen: the phone only rebuilds when it changes.
  */
-export type View = { key: string; live?: Record<string, string> } & (
+export type View = { key: string; live?: Record<string, string>; /** Seconds left to answer, if the screen is timed: the phone shows a bar running down. */ secs?: number } & (
   | { type: 'wait'; title: string; text?: string; emoji?: string }
   | { type: 'text'; id: string; prompt: string; sub?: string; placeholder?: string; maxLen?: number; button?: string; image?: Stroke[] }
   | { type: 'choice'; id: string; prompt: string; sub?: string; options: Option[] }

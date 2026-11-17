@@ -49,9 +49,10 @@ if (shots) await host.screenshot({ path: `${shots}/park-vote.png` });
 
 // On a slow machine the walkers fall a little short of the circle, so nudge them on until the ride starts.
 let started = false;
-for (let i = 0; i < 6 && !started; i++) {
-  started = await host.waitForSelector('.game', { timeout: 8000 }).then(() => true, () => false);
-  if (!started) await Promise.all(phones.map((p) => hold(p, 'up', 150)));
+for (let i = 0; i < 25 && !started; i++) {
+  // Anyone not yet standing at a ride takes another short step; anyone who is waits for it to start.
+  await Promise.all(phones.map(async (p) => { const at = await p.textContent('[data-live="big"]').catch(() => ''); if (at === 'Walk to a ride') await hold(p, 'up', 140); }));
+  started = await host.waitForSelector('.game', { timeout: 2500 }).then(() => true, () => false);
 }
 const title = started ? await host.textContent('.hud-title') : '';
 const parkGone = !(await host.$('.park-canvas'));

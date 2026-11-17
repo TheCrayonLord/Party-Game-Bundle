@@ -25,6 +25,7 @@ const ticket = h('div.ticket');
 const screen = h('div.screen');
 
 watchRotation();
+addEventListener('pointerdown', (e) => { if ((e.target as HTMLElement).closest?.('button')) { try { navigator.vibrate?.(8); } catch { /* not allowed */ } } });      // a tiny tap you can feel
 joinForm();
 
 function joinForm(error = '') {

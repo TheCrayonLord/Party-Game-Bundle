@@ -22,7 +22,8 @@ export function renderView(root: HTMLElement, v: View, send: Send, color: string
   const status = h('div.status', { 'data-live': 'status' });
   root.className = 'screen';
   const kids = build(v, send, color, root);
-  root.replaceChildren(...kids, status);
+  const bar = v.secs ? [h('div.timebar', h('i', { style: { animationDuration: `${v.secs}s` } }))] : [];
+  root.replaceChildren(...bar, ...kids, status);
   return (l) => {
     for (const [k, val] of Object.entries(l))
       root.querySelectorAll<HTMLElement>(`[data-live="${k}"]`).forEach((el) => (el.textContent = val));
@@ -41,6 +42,8 @@ function build(v: View, send: Send, color: string, root: HTMLElement): HTMLEleme
       const count = h('div.count', `0/${max}`);
       const btn = h<'button'>('button.btn', { disabled: true, onclick: () => { const t = input.value.trim(); if (t) { btn.disabled = true; send({ id: v.id, v: t }); } } }, v.button || 'Send');
       input.oninput = () => { count.textContent = `${input.value.length}/${max}`; btn.disabled = !input.value.trim(); };
+      input.onkeydown = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); btn.click(); } };      // Enter sends
+      setTimeout(() => input.focus({ preventScroll: true }), 50);
       return [h('h2', v.prompt), h('p.sub', v.sub || ''), ...(v.image ? [h('div.drawwrap', strokeCanvas(v.image, 600))] : []), input, count, btn];
     }
 
@@ -167,11 +170,19 @@ function tiltPad(v: Extract<View, { type: 'tilt' }>, send: Send): HTMLElement[] 
   const dot = h('div.steerdot');
   const hint = h('p', v.pitch ? 'Tilt left/right to bank, forward/back to dive and climb' : 'Tilt your phone to steer');
   const pad = h('div.tiltpad' + (v.pitch ? '.two' : ''), h('div.livebig', { 'data-live': 'big' }), v.pitch ? dot : h('div.steerbar', dot), hint, h('p.sub', { 'data-live': 'info' }));
-  let tx = 0, ty = 0, touch: [number, number] | null = null, sent = '', gotMotion = false, level: number | null = null;
+  let tx = 0, ty = 0, touch: [number, number] | null = null, sent = '', gotMotion = false, level: number | null = null, centre = 0, rawX = 0;
+  // Each player can set how far they have to tilt, and re-centre to however they are holding the phone now.
+  const SENS: [string, number][] = [['Gentle', 1.5], ['Normal', 2.2], ['Twitchy', 3.3]];
+  let sens = 1; try { sens = Math.min(2, Math.max(0, Number(localStorage.getItem('pgb-sens') ?? 1))); } catch { /* storage blocked */ }
+  const sensBtn = h('button.tilt-opt', { onclick: () => { sens = (sens + 1) % 3; try { localStorage.setItem('pgb-sens', String(sens)); } catch { /* storage blocked */ } sensBtn.textContent = `Steering: ${SENS[sens][0]}`; } }, `Steering: ${SENS[sens][0]}`);
+  const centreBtn = h('button.tilt-opt', { onclick: () => { centre = rawX; level = null; } }, 'Re-centre');
+  for (const bt of [sensBtn, centreBtn]) bt.onpointerdown = (e) => e.stopPropagation();      // not a steering touch
+  pad.append(h('div.tilt-opts', sensBtn, centreBtn));
   on('deviceorientation', (e) => {
     const l = lean(e); if (!l) return;
     gotMotion = true;
-    tx = clamp(l[0] * 2.2, -1, 1);             // full lock at roughly 27 degrees
+    rawX = l[0];
+    tx = clamp((l[0] - centre) * SENS[sens][1], -1, 1);      // full lock at roughly 27 degrees on Normal
     level ??= l[1];                            // however the phone is held when the screen appears counts as level
     ty = clamp((level - l[1]) * 2.6, -1, 1);   // tipping the top edge up = climb
   });
@@ -244,7 +255,7 @@ function walkPad(send: Send): HTMLElement[] {
 
 function bombPad(v: Extract<View, { type: 'bomb' }>, send: Send): HTMLElement[] {
   const bomb = h('div.bomb', '💣');
-  const pad = h('div.bombpad', h('h2', v.title), bomb, h('p', 'FLICK it away! ⬅ ➡ pass to a neighbour · ⬆ throw it across'));
+  const pad = h('div.bombpad', h('h2', v.title), bomb, h('p', 'FLICK it away! ⬅ ➡ pass to a neighbour · ⬆ throw it across'), h('p.bomb-hot', { 'data-live': 'info' }));
   let start: [number, number] | null = null;
   pad.onpointerdown = (e) => { pad.setPointerCapture(e.pointerId); start = [e.clientX, e.clientY]; };
   pad.onpointermove = (e) => { if (start) bomb.style.transform = `translate(${e.clientX - start[0]}px, ${Math.min(0, e.clientY - start[1])}px)`; };

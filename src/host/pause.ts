@@ -2,7 +2,7 @@
 import { h } from '../core/util';
 import { isPaused, setPaused } from './clock';
 import { MAX_PLAYERS, type Player, type Room } from './room';
-import { applyVolumes, sfx, babble } from './sound';
+import { applyVolumes, sfx, babble, duck } from './sound';
 import { CHANNELS, THEMES, isFullscreen, saveSettings, setFullscreen, settings } from './settings';
 
 export const BOT_LEVELS = ['Easy', 'Normal', 'Hard'] as const;
@@ -19,6 +19,8 @@ export interface PauseHooks {
   setMenu(m: 'park' | 'list'): void;
   /** Bots can only be added or removed between rides. */
   canEditGuests(): boolean;
+  /** Called when something about how the park is drawn changes (shadows), so it can be rebuilt. */
+  parkChanged(): void;
   /** Called after a bot's skill changes, so the lobby can redraw. */
   botsChanged(): void;
 }
@@ -32,14 +34,14 @@ export function initPause(room: Room, hooks: PauseHooks) {
 
   const open = () => {
     if (isPaused() || !hooks.available()) return;
-    setPaused(true); room.setPaused(true);
+    setPaused(true); room.setPaused(true); duck(true);
     page = 'main'; draw();
     document.body.append(overlay);
   };
   const close = () => {
     if (!isPaused()) return;
     overlay.remove();
-    setPaused(false); room.setPaused(false);
+    setPaused(false); room.setPaused(false); duck(false);
   };
   const then = (fn: () => void) => () => { close(); fn(); };
 
@@ -53,6 +55,7 @@ export function initPause(room: Room, hooks: PauseHooks) {
       h('button.btn.pause-opt', { onclick: () => { page = 'settings'; draw(); }, 'data-pause': 'settings' }, '⚙ Settings'),
       h('button.btn.pause-opt', { onclick: then(hooks.endGame), 'data-pause': 'end' }, '🏆 End game'),
       h('button.btn.pause-opt', { onclick: then(hooks.desktop), 'data-pause': 'desktop' }, '🚪 Return to desktop'),
+      h('p.pause-hint', 'Shortcuts: Esc pause · F full screen · M mute'),
       h('p.pause-hint', (hooks.onRide() ? 'End round stops this minigame and returns to game selection. ' : '') + 'End game closes the park for the night: the overall podium, the grand prize and the credits.'),
     ].filter(Boolean) as HTMLElement[]);
   };
@@ -83,7 +86,10 @@ export function initPause(room: Room, hooks: PauseHooks) {
         row('Theme', theme),
         row('Menu', seg([['🎡 Regular', hooks.menu() === 'park', () => hooks.setMenu('park')], ['📋 Performance', hooks.menu() === 'list', () => hooks.setMenu('list')]])),
         h('p.set-note', 'Regular is the walk-around park. Performance is a plain list of games, for slower computers.'),
+        row('Park shadows', seg([['On', settings.shadows, () => { settings.shadows = true; saveSettings(); hooks.parkChanged(); }], ['Off', !settings.shadows, () => { settings.shadows = false; saveSettings(); hooks.parkChanged(); }]])),
+        row('Mascot chatter', seg((['Off', 'Some', 'Lots'] as const).map((name, i) => [name, settings.chatter === i, () => { settings.chatter = i as 0 | 1 | 2; saveSettings(); }]))),
         h('h3', 'Audio'),
+        row('Sound', seg([['On', !settings.muted, () => { settings.muted = false; saveSettings(); applyVolumes(); }], ['Muted', settings.muted, () => { settings.muted = true; saveSettings(); applyVolumes(); }]])),
         ...sliders,
         h('p.set-note', 'Narration is the mascot’s voice. Game sounds cover effects, applause and fanfares.'),
         h('h3', `Bots (${bots.length})`),
@@ -96,6 +102,11 @@ export function initPause(room: Room, hooks: PauseHooks) {
   };
 
   addEventListener('keydown', (e) => {
+    const typing = (e.target as HTMLElement)?.matches?.('input, textarea, select');
+    if (!typing && !e.ctrlKey && !e.metaKey && !e.altKey) {      // shortcuts: F for full screen, M to mute
+      if (e.code === 'KeyF') { setFullscreen(!isFullscreen()); return; }
+      if (e.code === 'KeyM') { settings.muted = !settings.muted; saveSettings(); applyVolumes(); if (isPaused()) draw(); return; }
+    }
     if (e.code !== 'Escape') return;
     if (!isPaused()) open();
     else if (page === 'settings') { page = 'main'; draw(); }

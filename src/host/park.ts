@@ -5,6 +5,7 @@ import { clamp, h, pick } from '../core/util';
 import type { GameDef } from './ctx';
 import type { Player, Room } from './room';
 import { isPaused } from './clock';
+import { settings } from './settings';
 import { garageDetailed, guestDetailed, quality } from '../core/models';
 import { boothDetail, carousel, gateAndFence } from '../core/details';
 import { MASCOT_MODELS } from '../core/mascots3d';
@@ -64,7 +65,7 @@ export class Park {
     root.replaceChildren(h('div.park', renderer.domElement, this.labels, this.banner, this.overlay));
     this.buildScenery();
     this.buildBooths(games);
-    if (quality.detailed) {        // regular start: soft shadows across the whole park
+    if (quality.detailed && settings.shadows) {        // regular start: soft shadows across the whole park (can be turned off in Settings)
       renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
       sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); sun.shadow.bias = -0.0008; sun.shadow.normalBias = 0.05;
       Object.assign(sun.shadow.camera, { left: -75, right: 75, top: 60, bottom: -60, near: 1, far: 220 }); sun.shadow.camera.updateProjectionMatrix();

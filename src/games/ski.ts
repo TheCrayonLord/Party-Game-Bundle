@@ -250,8 +250,8 @@ async function heat(ctx: Ctx, hill: Hill, racers: Player[]): Promise<Map<string,
         if (clock > 3) ctx.standings(order.filter((s) => s.finish == null).map((s) => s.p));
         for (const s of skiers) {
           const place = order.indexOf(s) + 1, left = Math.max(0, Math.round(LENGTH + s.z));
-          const pen = s.missed * MISS;
-          const text = s.finish != null ? `🏁 ${(s.finish + pen).toFixed(1)}s${pen ? ` (incl. +${pen}s)` : ''}` : `${ordinal(place)} · ${left}m to go`;
+          const pen = s.missed * MISS, gap = Math.round(s.z - order[0].z);      // metres behind whoever leads this heat
+          const text = s.finish != null ? `🏁 ${(s.finish + pen).toFixed(1)}s${pen ? ` (incl. +${pen}s)` : ''}` : `${ordinal(place)} · ${left}m to go${gap > 3 ? ` · ${gap}m behind` : ''}`;
           s.miss.hidden = !(s.missFlash > 0 && s.finish == null);      // showing it once plays its pop once
           s.line.replaceChildren(h('span.badge', { style: { background: s.p.color } }, `${s.p.shape} ${s.p.name}`), h('span.ski-place', text), h('span.ski-speed', s.finish != null ? '' : `${Math.round(s.v * 2.4)} km/h · 🚩${s.gates}${pen ? ` · ⏱ +${pen}s` : ''}`));
           const info = s.stun > 0 ? 'Wipeout!' : s.missFlash > 0 ? `Missed a gate: +${MISS}s on your time` : s.boost > 0 ? 'Through the flags: boost!' : Math.abs(s.x) > HALF ? 'Deep snow! Get back on the piste.' : '';

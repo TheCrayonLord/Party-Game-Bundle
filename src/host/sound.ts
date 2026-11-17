@@ -30,13 +30,14 @@ function ctx(): AudioContext | null {
 export function unlockSound() {
   const wake = () => { const a = ctx(); if (a && a.state === 'suspended') a.resume().catch(() => {}); };
   addEventListener('pointerdown', wake); addEventListener('keydown', wake);
+  document.addEventListener('visibilitychange', applyVolumes);      // quiet while the tab is in the background
 }
 
 /** Re-reads the volume sliders. */
 export function applyVolumes() {
   if (!ac) return;
   const v = settings.volume, t = ac.currentTime;
-  master.gain.setTargetAtTime(v.master / 100, t, 0.03);
+  master.gain.setTargetAtTime(settings.muted || document.hidden ? 0 : v.master / 100, t, 0.03);
   musicBus.gain.setTargetAtTime((v.music / 100) * 0.55, t, 0.03);      // music sits under everything else
   gameBus.gain.setTargetAtTime(v.game / 100, t, 0.03);
   voiceBus.gain.setTargetAtTime(v.narration / 100, t, 0.03);

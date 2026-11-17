@@ -3,6 +3,7 @@ import { SPEED, h, pick, rand } from '../core/util';
 import type { Player, Room } from './room';
 import { bubble, line, mascot, type Moment } from './mascot';
 import { isPaused, later } from './clock';
+import { settings } from './settings';
 import { babble, sfx, sting, type Sfx } from './sound';
 
 export interface GameMeta {
@@ -100,7 +101,7 @@ export class Ctx {
     if (kind === 'crash' || kind === 'out') { this.moments[kind].set(p.id, (this.moments[kind].get(p.id) || 0) + 1); this.buzz(p, 'hit'); }
     if (kind === 'crash') sfx('thud'); else if (kind === 'out') sting('aww', 0.8);
     const now = performance.now();
-    if (!this.alive || now - this.talkAt < (urgent ? 3500 : 9000)) return;
+    if (!this.alive || settings.chatter === 0 || now - this.talkAt < (urgent ? 3500 : 9000) * (settings.chatter === 2 ? 0.55 : 1)) return;
     this.talkAt = now;
     const words = line(mascot.during[kind], { name: p.name });
     this.talk.replaceChildren(bubble(words)); babble(words);
@@ -188,6 +189,7 @@ export class Ctx {
     const queues = new Map(players.map((p) => [p.id, viewsFor(p)]));
     const done = new Set<string>();
     this.timer(seconds);
+    const until = performance.now() + (seconds * 1000) / SPEED;
     return new Promise((resolve, reject) => {
       let finished = false;
       const finish = () => {
@@ -205,7 +207,7 @@ export class Ctx {
           if (done.size === players.length) finish();
           return;
         }
-        const v = q[i];
+        const v = { ...q[i], secs: Math.max(1, (until - performance.now()) / 1000) };
         this.view(p, v);
         if (players.length === 1 && this.players.length > 1) this.buzz(p, 'turn');      // a screen for one player alone means it's their turn
         if (p.bot) this.sleep(1.2 + Math.random() * 3).then(() => { if (!finished) take(p, { id: (v as any).id, v: opts.bot?.(p, v) ?? botAnswer(v) }); }, () => {});

@@ -369,3 +369,10 @@ img.mascot-face.model { width: 7.6em; height: 7.6em; margin: -.9em -.5em -.5em -
 .park-banner { top: .6em; bottom: auto; font-size: .95em; max-width: 44%; padding: .25em 1em; }
 .park-label.go { background: var(--mustard); animation: pulse .5s infinite alternate; z-index: 2; }
 .park-banner { left: 45%; max-width: 38%; font-size: .85em; }
+
+/* races: announcements and the course map */
+.race-toast { position: absolute; left: 50%; top: 12%; transform: translateX(-50%); font-family: var(--display); font-size: 2.4em; color: #fff; background: rgba(20,12,35,.72); border: .08em solid var(--mustard); border-radius: 999px; padding: .1em .9em; opacity: 0; pointer-events: none; white-space: nowrap; z-index: 4; }
+.race-toast.show { animation: toast 2.6s both; }
+@keyframes toast { 0% { opacity: 0; transform: translateX(-50%) scale(.6); } 12% { opacity: 1; transform: translateX(-50%) scale(1.08); } 20% { transform: translateX(-50%) scale(1); } 80% { opacity: 1; } 100% { opacity: 0; } }
+.race-map { position: absolute; right: .7em; bottom: .7em; width: 13.5em; background: rgba(20,12,35,.5); border-radius: .7em; padding: .2em; pointer-events: none; z-index: 3; }
+.surprise { align-self: flex-start; }

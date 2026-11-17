@@ -115,8 +115,11 @@ export async function runRace(ctx: Ctx, cfg: RaceConfig): Promise<Score[]> {
   scene.add(new THREE.AmbientLight(th.light ?? '#ffe1c4', night ? 0.3 : 1.5));
   const sun = new THREE.DirectionalLight(th.light ?? '#ffb37a', night ? 0.25 : 1.6); sun.position.set(-40, 80, 30); scene.add(sun);
   const overlay = h('div.kart-overlay');
+  const toast = h('div.race-toast'), map = h<'canvas'>('canvas.race-map', { width: 220, height: 132 });
+  /** A short announcement across the top of the screen: laps, finishers. */
+  const announce = (text: string) => { toast.textContent = text; toast.classList.remove('show'); void toast.offsetWidth; toast.classList.add('show'); };
   const board = h('div.kart-board');
-  ctx.show(renderer.domElement, board, overlay);
+  ctx.show(renderer.domElement, board, overlay, toast, map);
   renderer.domElement.style.cssText = 'display:block;width:100%;height:100%';
   ctx.onEnd(() => { renderer.dispose(); scene.traverse((o: any) => { o.geometry?.dispose?.(); o.material?.map?.dispose?.(); o.material?.dispose?.(); }); });
 
@@ -165,6 +168,13 @@ export async function runRace(ctx: Ctx, cfg: RaceConfig): Promise<Score[]> {
     for (let i = 0; i < 140; i++) {
       const m = new THREE.Mesh(foam, new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0, depthWrite: false }));
       m.rotation.x = -Math.PI / 2; m.position.y = 0.09; m.visible = false; scene.add(m); wakes.push({ m, life: 0 });
+    }
+  }
+  if (!boat) {      // karts kick up dust the way boats leave foam
+    const puff = new THREE.CircleGeometry(1, 7);
+    for (let i = 0; i < 90; i++) {
+      const m = new THREE.Mesh(puff, new THREE.MeshBasicMaterial({ color: '#e9dcc0', transparent: true, opacity: 0, depthWrite: false }));
+      m.rotation.x = -Math.PI / 2; m.position.y = 0.14; m.visible = false; scene.add(m); wakes.push({ m, life: 0 });
     }
   }
   // The start / finish line: a checkered strip across the course, a gantry with a FINISH banner, and flags.
@@ -275,6 +285,8 @@ export async function runRace(ctx: Ctx, cfg: RaceConfig): Promise<Score[]> {
     else if (boat) { b.position.set(0, 1.53, -0.45); b.scale.setScalar(0.6); }      // on the cabin roof
     else { b.position.set(0, 0.83, 1.15); b.scale.setScalar(0.55); }                // on the nose
     g.add(b);
+    const flame = new THREE.Mesh(new THREE.ConeGeometry(0.55, 2.6, 7), new THREE.MeshBasicMaterial({ color: boat ? '#ffffff' : '#ff9f1c', transparent: true, opacity: 0.85 }));
+    flame.rotation.x = -Math.PI / 2; flame.position.set(0, 0.7, -2.9); flame.visible = false; g.add(flame); g.userData.flame = flame;
     g.scale.setScalar(1.5); scene.add(g);
     return g;
   };
@@ -376,7 +388,7 @@ export async function runRace(ctx: Ctx, cfg: RaceConfig): Promise<Score[]> {
   });
 
   // ---------- race ----------
-  let clock = -4.6, firstFinish: number | null = null, lastHud = 0;
+  let clock = -4.6, firstFinish: number | null = null, lastHud = 0, lapShown = 0;
   const wrap = (a: number) => Math.atan2(Math.sin(a), Math.cos(a));
 
   const step = (k: Racer, dt: number, place: number) => {
@@ -395,7 +407,14 @@ export async function runRace(ctx: Ctx, cfg: RaceConfig): Promise<Score[]> {
     const crossed = (i: number) => (best - i + N) % N < 30 && (k.idx - i + N) % N > N - 30;   // passed sample i this frame
     const dist = Math.sqrt(bd), off = dist > WIDTH / 2 + 0.5;
     k.off = off;
-    if (k.lap >= LAPS && k.finish == null) { k.finish = clock; firstFinish ??= clock; }
+    if (k.lap >= LAPS && k.finish == null) {
+      k.finish = clock; firstFinish ??= clock;
+      const placed = racers.filter((o) => o.finish != null).length;
+      announce(`${k.p.name} finishes ${ordinal(placed)}!`); ctx.sfx(placed === 1 ? 'go' : 'pop'); ctx.buzz(k.p, 'good');
+    } else if (k.finish == null && k.lap > lapShown && k.lap < LAPS) {      // the leader starts a new lap
+      lapShown = k.lap; ctx.sfx('count');
+      announce(k.lap === LAPS - 1 ? 'FINAL LAP!' : `Lap ${k.lap + 1} of ${LAPS}`);
+    }
 
     const fx = Math.sin(k.th), fz = Math.cos(k.th);
     if (boat && k.spin <= 0) {
@@ -461,18 +480,21 @@ export async function runRace(ctx: Ctx, cfg: RaceConfig): Promise<Score[]> {
       if (boat) {
         waterLayers[0].offset.set(t * 0.03, Math.sin(t * 0.4) * 0.05);
         waterLayers[1].offset.set(-t * 0.02, t * 0.025);
-        if (clock > 0 && t - wakeAt > 0.09) {      // drop a puff of foam behind every moving boat
+      }
+      {
+        if (clock > 0 && t - wakeAt > (boat ? 0.09 : 0.07)) {      // foam behind every moving boat; dust behind karts that are boosting, sliding or off the track
           wakeAt = t;
           for (const k of racers) {
             if (Math.hypot(k.vx, k.vz) < 6) continue;
+            if (!boat && !(k.boost > 0 || k.off || k.spin > 0 || Math.abs(k.steer) > 0.75)) continue;
             const w = wakes.find((x) => x.life <= 0); if (!w) break;
             w.life = 1; w.m.visible = true; w.m.position.x = k.x - Math.sin(k.th) * 2.6; w.m.position.z = k.z - Math.cos(k.th) * 2.6;
           }
         }
         for (const w of wakes) if (w.life > 0) {
           w.life -= dt * 0.9;
-          (w.m.material as THREE.MeshBasicMaterial).opacity = Math.max(0, w.life) * 0.5;
-          w.m.scale.setScalar(0.7 + (1 - w.life) * 1.6);
+          (w.m.material as THREE.MeshBasicMaterial).opacity = Math.max(0, w.life) * (boat ? 0.5 : 0.38);
+          w.m.scale.setScalar((boat ? 0.7 : 0.5) + (1 - w.life) * 1.6);
           if (w.life <= 0) w.m.visible = false;
         }
       }
@@ -487,7 +509,9 @@ export async function runRace(ctx: Ctx, cfg: RaceConfig): Promise<Score[]> {
         const ax = l.k.x + Math.sin(l.k.th) * 7, az = l.k.z + Math.cos(l.k.th) * 7;
         l.light.position.set(ax, 3.5, az); l.glow.position.x = ax; l.glow.position.z = az;
       }
-      for (const k of racers) { k.mesh.scale.z = k.boost > 0 ? 2 : k.mesh.scale.x;
+      for (const k of racers) {
+        const f = k.mesh.userData.flame as THREE.Mesh;      // a jet out of the back while boosting
+        f.visible = k.boost > 0 && k.finish == null; if (f.visible) f.scale.set(1, 0.7 + Math.random() * 0.8, 1);
       }
       follow(dt);
       renderer.render(scene, cam);
@@ -504,6 +528,14 @@ export async function runRace(ctx: Ctx, cfg: RaceConfig): Promise<Score[]> {
           if (big + info !== k.liveText || btn !== k.btnText) { k.liveText = big + info; k.btnText = btn; ctx.live(k.p, { big, info, 'btn-item': btn, 'btn-boost': btn }); }
         });
         if (firstFinish != null && !board.dataset.t) { board.dataset.t = '1'; ctx.timer(20); }
+        {      // the little map: the whole course, with a dot for every racer, since the main view follows the pack
+          const g2 = map.getContext('2d')!, mx = (x: number) => 110 + x * 1.22, mz = (z: number) => 66 + z * 1.22;
+          g2.clearRect(0, 0, 220, 132);
+          g2.beginPath(); S.forEach((p, i) => (i ? g2.lineTo(mx(p.x), mz(p.z)) : g2.moveTo(mx(p.x), mz(p.z)))); g2.closePath();
+          g2.lineJoin = 'round'; g2.strokeStyle = 'rgba(0,0,0,.55)'; g2.lineWidth = 11; g2.stroke(); g2.strokeStyle = 'rgba(255,255,255,.85)'; g2.lineWidth = 7; g2.stroke();
+          g2.fillStyle = '#15101c'; g2.fillRect(mx(S[0].x) - 2, mz(S[0].z) - 5, 4, 10);
+          for (const k of [...order].reverse()) { g2.beginPath(); g2.arc(mx(k.x), mz(k.z), k.ai ? 4 : 5.5, 0, 7); g2.fillStyle = k.p.color; g2.fill(); g2.lineWidth = 1.5; g2.strokeStyle = '#15101c'; g2.stroke(); }
+        }
       }
       if (racers.every((k) => k.finish != null) || (firstFinish != null && clock > firstFinish + 20) || clock > 150) { stop(); resolve(); }
     });
@@ -513,5 +545,6 @@ export async function runRace(ctx: Ctx, cfg: RaceConfig): Promise<Score[]> {
   overlay.textContent = `${final[0].p.avatar} ${final[0].p.name} wins!`;
   ctx.wait(ctx.players, 'Race over!', '', '🏁');
   await ctx.sleep(3.5);
-  return final.map((k, i) => ({ id: k.p.id, score: final.length - i, label: k.finish != null ? `${k.finish.toFixed(1)}s` : 'did not finish' }));
+  const best = final[0].finish;
+  return final.map((k, i) => ({ id: k.p.id, score: final.length - i, label: k.finish == null ? 'did not finish' : i === 0 || best == null ? `${k.finish.toFixed(1)}s` : `+${(k.finish - best).toFixed(1)}s` }));
 }

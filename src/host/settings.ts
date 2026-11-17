@@ -3,13 +3,24 @@ export type Channel = 'master' | 'music' | 'narration' | 'game';
 export const CHANNELS: [Channel, string][] = [['master', 'Master volume'], ['music', 'Music'], ['narration', 'Narration'], ['game', 'Game sounds']];
 export const THEMES: [string, string][] = [['carnival', 'Retro Carnival']];
 
-export interface Settings { theme: string; volume: Record<Channel, number> }
-export const settings: Settings = { theme: 'carnival', volume: { master: 80, music: 70, narration: 100, game: 80 } };
+export interface Settings {
+  theme: string; volume: Record<Channel, number>;
+  /** Soft shadows in the park (Regular start). Off is lighter on the computer. */
+  shadows: boolean;
+  /** How much the mascot talks during games: 0 never, 1 now and then, 2 a lot. */
+  chatter: 0 | 1 | 2;
+  /** Sound off, without losing the volume levels. */
+  muted: boolean;
+}
+export const settings: Settings = { theme: 'carnival', volume: { master: 80, music: 70, narration: 100, game: 80 }, shadows: true, chatter: 1, muted: false };
 
 try {
   const saved = JSON.parse(localStorage.getItem('pgb-settings') || '{}');
   if (THEMES.some(([id]) => id === saved.theme)) settings.theme = saved.theme;
   for (const [c] of CHANNELS) if (Number.isFinite(saved.volume?.[c])) settings.volume[c] = Math.max(0, Math.min(100, saved.volume[c]));
+  if (typeof saved.shadows === 'boolean') settings.shadows = saved.shadows;
+  if ([0, 1, 2].includes(saved.chatter)) settings.chatter = saved.chatter;
+  if (typeof saved.muted === 'boolean') settings.muted = saved.muted;
 } catch { /* storage blocked or empty */ }
 
 export function saveSettings() {

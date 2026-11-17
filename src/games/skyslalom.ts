@@ -6,6 +6,7 @@ import type { Ctx, GameDef } from '../host/ctx';
 import type { Player } from '../host/room';
 
 const RINGS = 22, GAP = 2.1 /* seconds between rings */, SPEED_Z = 46, FAR = -230;
+const DOUBLE = 3;                          // the last few hoops are pink and worth twice as much
 const WARN = 1.4, BLOW = 2.2;             // a gust is announced by two pulses of its label, then it blows
 const XR = 17, YLO = 2, YHI = 19;        // the box the planes fly in
 
@@ -18,7 +19,7 @@ export const skyslalom: GameDef = {
       "⭕ Fly through the hoops as they arrive: 100 points each.",
       "💨 When the GUST sign pulses twice, brace: the wind is about to shove everyone sideways.",
       "🟡 Thread the small gold ring in the middle for 250.",
-      "🔥 Don’t miss: every hoop in a row is worth more.",
+      "🔥 Don’t miss: every hoop in a row is worth more. The last three hoops are pink and worth DOUBLE.",
     ] },
   async run(ctx: Ctx) {
     const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -31,7 +32,8 @@ export const skyslalom: GameDef = {
     scene.add(new THREE.AmbientLight('#ffe1c4', 1.6));
     const sun = new THREE.DirectionalLight('#ffb37a', 1.4); sun.position.set(-20, 40, 30); scene.add(sun);
     const overlay = h('div.kart-overlay'), board = h('div.kart-board');
-    ctx.show(renderer.domElement, board, overlay);
+    const toast = h('div.race-toast');
+    ctx.show(renderer.domElement, board, overlay, toast);
     renderer.domElement.style.cssText = 'display:block;width:100%;height:100%';
     ctx.onEnd(() => { renderer.dispose(); scene.traverse((o: any) => { o.geometry?.dispose?.(); o.material?.map?.dispose?.(); o.material?.dispose?.(); }); });
     const fit = () => { const w = ctx.stage.clientWidth || 1280, hh = ctx.stage.clientHeight || 680; renderer.setSize(w, hh, false); cam.aspect = w / hh; cam.updateProjectionMatrix(); };
@@ -72,9 +74,9 @@ export const skyslalom: GameDef = {
     const rings = Array.from({ length: RINGS }, (_, i) => {
       rx = clamp(rx + (Math.random() - 0.5) * 16, -XR + 4, XR - 4); ry = clamp(ry + (Math.random() - 0.5) * 9, YLO + 4, YHI - 4);
       const g = new THREE.Group();
-      g.add(new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: '#f6ead2' })), new THREE.Mesh(goldGeo, new THREE.MeshBasicMaterial({ color: '#e8b23a' })));
+      g.add(new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: i >= RINGS - DOUBLE ? '#ff5fa2' : '#f6ead2' })), new THREE.Mesh(goldGeo, new THREE.MeshBasicMaterial({ color: '#e8b23a' })));
       g.position.set(rx, ry, FAR); g.visible = false; scene.add(g);
-      return { g, x: rx, y: ry, at: 3 + i * GAP, done: false };     // `at` = the moment it reaches the planes
+      return { g, x: rx, y: ry, at: 3 + i * GAP, done: false, mult: i >= RINGS - DOUBLE ? 2 : 1 };     // `at` = the moment it reaches the planes
     });
 
     let clock = -3.5, gust = 0, gustAt = -99, lastHud = 0;
@@ -90,6 +92,7 @@ export const skyslalom: GameDef = {
         if (clock > 0 && since > WARN + BLOW + 7 && Math.random() < dt * 0.25) { gust = Math.random() < 0.5 ? -1 : 1; gustAt = clock; }   // now and then, wind shoves everyone sideways
         const wind = blowing ? gust * 16 : 0;
         const next = rings.find((r) => !r.done);
+        if (next && next.mult > 1 && !toast.textContent && clock > next.at - 3) { toast.textContent = 'DOUBLE POINTS! Last three hoops'; toast.classList.add('show'); ctx.sfx('go'); }
 
         for (const pl of planes) {
           if (pl.p.bot || !pl.p.connected) {    // bots aim for the next hoop, not always well
@@ -112,8 +115,8 @@ export const skyslalom: GameDef = {
             r.done = true;
             for (const pl of planes) {
               const d = Math.hypot(pl.x - r.x, pl.y - r.y);
-              if (d < 1.9) { pl.score += 250 + pl.streak * 25; pl.streak++; ctx.buzz(pl.p, 'good'); }
-              else if (d < 4.4) { pl.score += 100 + pl.streak * 25; pl.streak++; ctx.buzz(pl.p, 'good'); }
+              if (d < 1.9) { pl.score += (250 + pl.streak * 25) * r.mult; pl.streak++; ctx.buzz(pl.p, 'good'); }
+              else if (d < 4.4) { pl.score += (100 + pl.streak * 25) * r.mult; pl.streak++; ctx.buzz(pl.p, 'good'); }
               else pl.streak = 0;
             }
           }

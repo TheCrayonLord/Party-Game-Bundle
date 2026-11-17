@@ -72,7 +72,7 @@ export const hotpotato: GameDef = {
           const hot = held > HOT;
           fuse -= dt * SPEED * (hot ? 3 : 1); held += dt * SPEED;
           if (held < PAY) add(holder, dt * SPEED * 15);
-          if (held > HOT && !hot) { bombEl.classList.add('hot'); banner.textContent = `🔥 Overheating in ${holder.name}’s hands! The fuse is racing!`; }
+          if (held > HOT && !hot) { ctx.live(holder, { info: '🔥 OVERHEATING! The fuse is racing: throw it!' }); ctx.buzz(holder, 'hit'); bombEl.classList.add('hot'); banner.textContent = `🔥 Overheating in ${holder.name}’s hands! The fuse is racing!`; }
           const pts = ring.querySelector<HTMLElement>(`[data-pts="${holder.id}"]`); if (pts) pts.textContent = String(Math.round(score.get(holder.id)!));
           bombEl.style.transform = `translate(-50%, -50%) scale(${1 + Math.sin(performance.now() / (fuse < 4 ? 40 : 110)) * 0.12})`;
           if ((holder.bot || !holder.connected) && held > botPass) pass(pick(['left', 'right', 'up']));

@@ -73,3 +73,9 @@ body.keep-portrait[data-rot="cw"] #app { transform: translate(-50%, -50%) rotate
 .ticket-paint { display: none; font-size: 1.3em; background: none; border: 3px solid var(--ink); border-radius: 50%; width: 1.9em; height: 1.9em; order: 5; }
 body.in-lobby .ticket-paint { display: block; }
 .overlay.sheet { display: flex; flex-direction: column; gap: 1em; justify-content: center; align-items: stretch; z-index: 12; }
+.timebar { height: 8px; border-radius: 4px; background: rgba(255,255,255,.2); overflow: hidden; flex: none; }
+.timebar i { display: block; height: 100%; background: var(--mustard); transform-origin: left; animation: timebar linear both; }
+@keyframes timebar { from { transform: scaleX(1); } 80% { background: var(--mustard); } to { transform: scaleX(0); background: #ff4a2e; } }
+.tilt-opts { display: flex; gap: .5em; justify-content: center; }
+.tilt-opt { font: inherit; font-size: .75em; font-weight: 700; padding: .3em .8em; border-radius: 999px; border: 2px solid rgba(255,255,255,.6); background: rgba(0,0,0,.25); color: var(--cream); }
+.bomb-hot { font-weight: 800; font-size: 1.2em; color: #ffb39a; min-height: 1.4em; animation: flash .5s infinite alternate-reverse; }
