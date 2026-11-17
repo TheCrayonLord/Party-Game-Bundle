@@ -80,11 +80,12 @@ export function finale(app: HTMLElement, room: Room, night: Night): { done: Prom
     const bear = h('div.bear', '🧸');
     const step = (rank: number) => h(`div.pod-step.r${rank + 1}`, h('div.pod-figs', ...standing.filter((_, i) => ranks[i] === rank).map(figure), rank === 0 ? bear : null), h('div.pod-block', ordinal(rank + 1)));
     const podium = h('div.podium', step(1), step(0), step(2));
+    const stage = h('div.stage', h('div.stage-lights', h('i.beam.l'), h('i.beam.r')), podium, h('div.stage-floor'), h('div.stage-front', h('div.stage-bulbs')), h('div.stage-steps', h('i'), h('i'), h('i')));
     const banner = h('div.finale-banner');
     const rest = standing.filter((_, i) => ranks[i] > 2);
     const others = h('div.finale-rest', ...rest.map((p) => h('span.badge', { style: { background: p.color } }, `${ordinal(ranks[standing.indexOf(p)] + 1)} ${p.avatar} ${p.name} · ${p.tickets}`)));
     const confetti = h('div.confetti');
-    const screen = h('div.finale', h('h1.big', 'Tonight’s Grand Prize'), standing.length ? podium : h('p.sub', 'Nobody came to the fair tonight.'), banner, others, confetti);
+    const screen = h('div.finale', h('h1.big', 'Tonight’s Grand Prize'), standing.length ? stage : h('p.sub', 'Nobody came to the fair tonight.'), banner, others, confetti);
     app.replaceChildren(screen);
     await wait(1.6);
     curtain.classList.remove('closed');

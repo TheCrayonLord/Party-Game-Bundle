@@ -163,8 +163,6 @@ export function boatDetailed(COLOR: string) {
 export function guestDetailed(COLOR: string) {
   const g = new THREE.Group();
   for (const s of [-1, 1]) {
-    P(g, box(0.5, 0.22, 0.8), INK, s * 0.36, 0.11, 0.1);                // shoes
-    P(g, cyl(0.24, 0.26, 0.8, 8), '#3a4a7a', s * 0.36, 0.6, 0);         // legs
     P(g, cyl(0.17, 0.2, 1.1, 8), COLOR, s * 0.98, 1.75, 0, 0, 0, s * 0.28); // arms
     P(g, ball(0.2, 8), SKIN, s * 1.15, 1.22, 0);                        // hands
     P(g, ball(0.2, 8), SKIN, s * 0.86, 3.0, 0);                         // ears
@@ -186,7 +184,16 @@ export function guestDetailed(COLOR: string) {
   // a balloon on a string
   P(g, cyl(0.015, 0.015, 2.1, 4), CREAM, 1.3, 2.3, 0, 0, 0, -0.14);
   P(g, ball(0.5, 14), '#4cc9f0', 1.45, 3.7, 0).scale.y = 1.2; P(g, cone(0.1, 0.16, 6), '#4cc9f0', 1.45, 3.08, 0);
-  return bake(g);
+  const out = bake(g);
+  // Each leg is its own piece, hinged at the hip, so it can swing when the guest walks (see userData.legs).
+  out.userData.legs = [-1, 1].map((s) => {
+    const l = new THREE.Group();
+    P(l, box(0.5, 0.22, 0.8), INK, 0, -0.89, 0.1);                      // shoe
+    P(l, cyl(0.24, 0.26, 0.8, 8), '#3a4a7a', 0, -0.4, 0);               // leg
+    const leg = bake(l); leg.position.set(s * 0.36, 1.0, 0); out.add(leg);
+    return leg;
+  });
+  return out;
 }
 export function garageDetailed(COLOR: string) {
   const g = new THREE.Group();

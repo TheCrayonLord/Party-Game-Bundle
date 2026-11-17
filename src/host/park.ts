@@ -22,7 +22,7 @@ const SPARE: [number, number, number][] = [[0, -26, 0], [10, 24, -10], [-6, 26, 
 type Tick = (t: number) => void;
 
 interface Booth { game: GameDef; x: number; z: number; px: number; pz: number; open: boolean; label: HTMLElement; count: HTMLElement; pad: THREE.Mesh; ring: THREE.Mesh; shut: THREE.Mesh; votes: number }
-interface Guest { p: Player; g: THREE.Group; x: number; z: number; mx: number; mz: number; face: number; tx: number; tz: number; think: number; at: Booth | null; live: string }
+interface Guest { p: Player; g: THREE.Group; x: number; z: number; mx: number; mz: number; face: number; tx: number; tz: number; think: number; at: Booth | null; live: string; legs?: THREE.Object3D[]; step: number }
 
 export interface ParkOverlays { ticket: HTMLElement; mascot: HTMLElement; controls: HTMLElement }
 
@@ -313,7 +313,8 @@ export class Park {
 
   private spawn(p: Player) {
     const g = new THREE.Group();
-    if (quality.detailed) { const body = guestDetailed(p.color); body.traverse((o) => { o.castShadow = true; }); g.add(body); }
+    let legs: THREE.Object3D[] | undefined;
+    if (quality.detailed) { const body = guestDetailed(p.color); body.traverse((o) => { o.castShadow = true; }); g.add(body); legs = body.userData.legs; }
     else {
       this.add(new THREE.CylinderGeometry(0.75, 1.15, 2.3, 8), this.mat(p.color), 0, 1.15, 0, g);                 // body
       this.add(new THREE.SphereGeometry(0.85, 8, 6), this.mat('#f3dcc0'), 0, 2.9, 0, g);                        // head
@@ -327,7 +328,7 @@ export class Park {
     const x = SPAWN.x + (Math.random() - 0.5) * 10, z = SPAWN.z + (Math.random() - 0.5) * 4;
     g.position.set(x, 0, z); g.scale.setScalar(0.01);
     this.scene.add(g);
-    this.guests.set(p.id, { p, g, x, z, mx: 0, mz: 0, face: Math.PI, tx: x, tz: z, think: 1 + Math.random() * 2, at: null, live: '' });
+    this.guests.set(p.id, { p, g, x, z, mx: 0, mz: 0, face: Math.PI, tx: x, tz: z, think: 1 + Math.random() * 2, at: null, live: '', legs, step: Math.random() * 6 });
     this.puff(x, z);
   }
 
@@ -373,7 +374,12 @@ export class Park {
           if (d < 5 && d > 0.01) { g.x = b.x + (dx / d) * 5; g.z = b.z + (dz / d) * 5; }
         }
       }
-      g.g.position.set(g.x, moving ? Math.abs(Math.sin(t * 11)) * 0.35 : 0, g.z);
+      // Walking: legs swing from the hip and the body bobs with each step. The simple figures have no legs, so they waddle.
+      if (moving) g.step += dt * 13;
+      const swing = moving ? Math.sin(g.step) * 0.8 : 0;
+      if (g.legs) { g.legs[0].rotation.x += (swing - g.legs[0].rotation.x) * Math.min(1, dt * 20); g.legs[1].rotation.x += (-swing - g.legs[1].rotation.x) * Math.min(1, dt * 20); }
+      g.g.rotation.z = g.legs ? swing * 0.05 : swing * 0.16;
+      g.g.position.set(g.x, moving ? Math.abs(Math.sin(g.step)) * (g.legs ? 0.14 : 0.35) : 0, g.z);
       g.g.rotation.y += Math.atan2(Math.sin(g.face - g.g.rotation.y), Math.cos(g.face - g.g.rotation.y)) * Math.min(1, dt * 12);
       g.g.scale.setScalar(Math.min(1.35, g.g.scale.x + dt * 4));            // grow out of the smoke
       g.at = this.booths.find((b) => b.open && (g.x - b.px) ** 2 + (g.z - b.pz) ** 2 < PAD_R * PAD_R) || null;

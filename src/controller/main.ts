@@ -1,7 +1,7 @@
 import '../theme.css';
 import './phone.css';
 import { connectClient, type ClientNet, type NetKind } from '../core/transport';
-import { AVATARS, type ToPhone, type View } from '../core/types';
+import { COLORS, type ToPhone, type View } from '../core/types';
 import { h, pick, qs } from '../core/util';
 import { renderView, requestMotion, watchRotation } from './kit';
 
@@ -18,7 +18,7 @@ let me: Extract<ToPhone, { t: 'welcome' }> | null = null;
 let code = (qs.get('room') || '').toUpperCase();
 let kind = (qs.get('net') as NetKind) || 'p';
 let name = store.get('name');
-let avatar = store.get('avatar') || pick(AVATARS);
+let color = COLORS.includes(store.get('color')) ? store.get('color') : pick(COLORS);
 let curKey = '';
 let liveEls: (l: Record<string, string>) => void = () => {};
 const ticket = h('div.ticket');
@@ -31,8 +31,8 @@ function joinForm(error = '') {
   const nameIn = h<'input'>('input', { type: 'text', maxLength: 12, placeholder: 'Your name', value: name, autocomplete: 'off' });
   const codeIn = h<'input'>('input', { type: 'text', maxLength: 4, placeholder: 'Park code (4 letters)', value: code, autocapitalize: 'characters', autocomplete: 'off' });
   const err = h('div.err', error);
-  const grid = h('div.avatars', ...AVATARS.map((a) => {
-    const b = h<'button'>('button' + (a === avatar ? '.on' : ''), { onclick: () => { avatar = a; grid.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b)); } }, a);
+  const grid = h('div.colors', ...COLORS.map((c) => {
+    const b = h<'button'>('button' + (c === color ? '.on' : ''), { style: { background: c }, 'aria-label': 'Colour', 'data-color': c, onclick: () => { color = c; grid.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b)); } });
     return b;
   }));
   const go = h<'button'>('button.btn', {
@@ -40,7 +40,7 @@ function joinForm(error = '') {
       name = nameIn.value.trim(); code = codeIn.value.trim().toUpperCase();
       if (!name) return (err.textContent = 'Type a name first');
       if (code.length !== 4) return (err.textContent = 'Enter the 4-letter park code');
-      store.set('name', name); store.set('avatar', avatar);
+      store.set('name', name); store.set('color', color);
       // Must happen inside this tap: iOS only allows the motion prompt from a user gesture.
       await requestMotion();
       keepAwake();
@@ -50,7 +50,7 @@ function joinForm(error = '') {
       connect(true);
     },
   }, 'Get my ticket 🎟️');
-  app.replaceChildren(h('div.screen', h('h2', '🎪 Welcome to the fair'), qs.get('room') ? null : codeIn, nameIn, h('p.sub', 'Pick your look'), grid, err, go));
+  app.replaceChildren(h('div.screen', h('h2', '🎪 Welcome to the fair'), qs.get('room') ? null : codeIn, nameIn, h('p.sub', 'Pick your colour. If someone already has it, you get the nearest free one.'), grid, err, go));
 }
 
 async function connect(first: boolean) {
@@ -68,7 +68,7 @@ async function connect(first: boolean) {
     showOverlay('Reconnecting…');
     setTimeout(() => connect(false), 800);
   };
-  net.send({ t: 'hello', token, name, avatar });
+  net.send({ t: 'hello', token, name, color });
 }
 
 function onMsg(m: ToPhone) {

@@ -167,8 +167,31 @@ export async function runRace(ctx: Ctx, cfg: RaceConfig): Promise<Score[]> {
       m.rotation.x = -Math.PI / 2; m.position.y = 0.09; m.visible = false; scene.add(m); wakes.push({ m, life: 0 });
     }
   }
-  const line = new THREE.Mesh(new THREE.BoxGeometry(WIDTH, 0.05, 1.2), mat('#f6ead2'));
-  line.position.set(S[0].x, 0.1, S[0].z); line.rotation.y = Math.atan2(T[0].x, T[0].z); scene.add(line);
+  // The start / finish line: a checkered strip across the course, a gantry with a FINISH banner, and flags.
+  {
+    const fin = new THREE.Group();
+    fin.position.set(S[0].x, 0, S[0].z); fin.rotation.y = Math.atan2(T[0].x, T[0].z); scene.add(fin);
+    const cols = Math.round(WIDTH / 1.1), sq = WIDTH / cols;
+    const cc = document.createElement('canvas'); cc.width = cols * 16; cc.height = 64;
+    const cg = cc.getContext('2d')!;
+    for (let r = 0; r < 4; r++) for (let c = 0; c < cols; c++) { cg.fillStyle = (r + c) % 2 ? '#15101c' : '#ffffff'; cg.fillRect(c * 16, r * 16, 16, 16); }
+    const strip = new THREE.Mesh(new THREE.PlaneGeometry(WIDTH, sq * 4), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(cc) }));
+    strip.rotation.x = -Math.PI / 2; strip.position.y = 0.11; fin.add(strip);
+    const sc = document.createElement('canvas'); sc.width = 512; sc.height = 96;
+    const sg = sc.getContext('2d')!; sg.fillStyle = '#d9482b'; sg.fillRect(0, 0, 512, 96); sg.strokeStyle = '#f6ead2'; sg.lineWidth = 8; sg.strokeRect(4, 4, 504, 88);
+    sg.fillStyle = '#f6ead2'; sg.font = 'bold 68px Georgia, serif'; sg.textAlign = 'center'; sg.textBaseline = 'middle'; sg.fillText('★ FINISH ★', 256, 52);
+    // A sprite always faces the camera, so the word reads the right way up wherever the line points.
+    const sign = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(sc), depthTest: false }));
+    sign.scale.set(17, 17 * 96 / 512, 1); sign.position.set(0, 9, 0); sign.renderOrder = 5; fin.add(sign);
+    for (const side of [-1, 1]) {
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.34, 5.4, 8), mat(boat ? '#d9482b' : '#f6ead2')); post.position.set(side * (WIDTH / 2 + 1), 2.7, -sq * 1.5 - 1.2); fin.add(post);
+      const float = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 1.1, 0.7, 10), mat(boat ? '#f6ead2' : '#15101c')); float.position.set(side * (WIDTH / 2 + 1), 0.35, -sq * 1.5 - 1.2); fin.add(float);
+      for (let r = 0; r < 3; r++) for (let c = 0; c < 4; c++) {      // a checkered flag on each post
+        const f = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.06, 0.5), new THREE.MeshBasicMaterial({ color: (r + c) % 2 ? '#15101c' : '#ffffff' }));
+        f.position.set(side * (WIDTH / 2 + 1.6 + c * 0.5), 5.5, -sq * 1.5 - 1.2 + (r - 1) * 0.5); fin.add(f);
+      }
+    }
+  }
   // scenery, kept off the course
   const clear = (x: number, z: number) => S.every((s) => (s.x - x) ** 2 + (s.z - z) ** 2 > (WIDTH / 2 + 7) ** 2);
   if (boat) {

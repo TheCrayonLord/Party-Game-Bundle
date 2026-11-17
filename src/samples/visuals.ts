@@ -1,6 +1,7 @@
 // A look at "buffed up" visuals: the models the game uses now (top row) next to versions built from
 // many more small pieces, with soft shadows (bottom row). Nothing here is used by the game yet.
 import * as THREE from 'three';
+import { MASCOT_DRAFTS } from './mascots';
 import { boatDetailed, boatNow, garageDetailed, garageNow, guestDetailed, guestNow, kartDetailed, kartNow } from '../core/models';
 
 const app = document.getElementById('app')!;
@@ -35,7 +36,16 @@ const tag = (text: string, at: THREE.Vector3, big = false) => {
   el.style.cssText = `position:absolute;transform:translate(-50%,-50%);white-space:nowrap;${big ? 'font-size:20px;color:#e8b23a' : 'background:rgba(20,12,35,.6);padding:1px 8px;border-radius:99px'}`;
   labels.append(el); tags.push({ el, at });
 };
-pairs.forEach(([name, now, detailed], i) => {
+const mascots = new URLSearchParams(location.search).has('mascots');      // visuals.html?mascots shows the mascot drafts instead
+if (mascots) MASCOT_DRAFTS.forEach(([name, make], i) => {
+  const x = (i - 1.5) * 9.4;
+  const plinth = new THREE.Mesh(cyl(4.2, 4.5, 0.5, 32), new THREE.MeshLambertMaterial({ color: '#6d5486' })); plinth.position.set(x, 0.25, 0); plinth.receiveShadow = true; scene.add(plinth);
+  const m = make(); m.scale.setScalar(1.25); m.position.set(x, 0.5, 0);
+  m.traverse((o) => { const mesh = o as THREE.Mesh; if (mesh.isMesh && !(mesh.material as THREE.Material).transparent) { o.castShadow = true; o.receiveShadow = true; } });
+  scene.add(m); turning.push(m);
+  tag(name, new THREE.Vector3(x, 0.2, 5.6), true);
+});
+else pairs.forEach(([name, now, detailed], i) => {
   const x = (i - 1.5) * 12 + 2.5;
   for (const [make, z, shadows] of [[now, -9, false], [detailed, 7, true]] as [() => THREE.Group, number, boolean][]) {
     const plinth = new THREE.Mesh(cyl(5, 5.3, 0.5, 32), new THREE.MeshLambertMaterial({ color: shadows ? '#6d5486' : '#55406c' })); plinth.position.set(x, 0.25, z); plinth.receiveShadow = true; scene.add(plinth);
@@ -46,15 +56,16 @@ pairs.forEach(([name, now, detailed], i) => {
     tag(shadows ? `${name} · ${pieces} meshes` : `${pieces} meshes`, new THREE.Vector3(x, 0.2, z + 5.9));
   }
 });
-tag('NOW', new THREE.Vector3(-23, 0.2, -9), true); tag('DETAILED', new THREE.Vector3(-23, 0.2, 7), true);
+if (!mascots) { tag('NOW', new THREE.Vector3(-23, 0.2, -9), true); tag('DETAILED', new THREE.Vector3(-23, 0.2, 7), true); }
 
-let spin = 0.6, dragging = false, lastX = 0;
+let spin = mascots ? 0.35 : 0.6, dragging = false, lastX = 0;
 renderer.domElement.onpointerdown = (e) => { dragging = true; lastX = e.clientX; };
 addEventListener('pointerup', () => { dragging = false; });
 addEventListener('pointermove', (e) => { if (dragging) { spin += (e.clientX - lastX) * 0.01; lastX = e.clientX; } });
 const fit = () => {
   const w = innerWidth, h = innerHeight; renderer.setSize(w, h); cam.aspect = w / h;
-  cam.position.set(0, 34 / Math.min(1, cam.aspect / 1.7), 48 / Math.min(1, cam.aspect / 1.7)); cam.lookAt(0, 1.5, 0); cam.updateProjectionMatrix();
+  cam.position.set(0, 34 / Math.min(1, cam.aspect / 1.7), 48 / Math.min(1, cam.aspect / 1.7)); cam.lookAt(0, mascots ? 4 : 1.5, 0); if (mascots) { const k = 1 / Math.min(1, cam.aspect / 1.7); cam.position.set(0, 13 * k, 41 * k); cam.lookAt(0, 4, 0); }
+  cam.updateProjectionMatrix();
 };
 fit(); addEventListener('resize', fit);
 const still = new URLSearchParams(location.search).has('still');

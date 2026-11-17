@@ -26,7 +26,7 @@ export type View = { key: string; live?: Record<string, string> } & (
 );
 
 export type ToHost =
-  | { t: 'hello'; token: string; name: string; avatar: string }
+  | { t: 'hello'; token: string; name: string; avatar?: string; /** The colour the player asked for; they get it unless another person already has it. */ color?: string }
   | { t: 'in'; d: any };
 
 export type ToPhone =

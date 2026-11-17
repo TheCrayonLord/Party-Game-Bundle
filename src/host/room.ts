@@ -43,10 +43,10 @@ export class Room {
     if (!p) {
       const name = String(m.name || 'Guest').trim().slice(0, 12) || 'Guest';
       if (this.players.length >= MAX_PLAYERS) {      // no seats left: they join the audience
-        p = { id: 'a' + ++this.seq, token: '', name, avatar: AVATARS.includes(m.avatar) ? m.avatar : AVATARS[0], color: '#8d8478', shape: '👀',
+        p = { id: 'a' + ++this.seq, token: '', name, avatar: AVATARS[this.seq % AVATARS.length], color: '#8d8478', shape: '👀',
           tickets: 0, connected: false, bot: false, vip: false, level: 1, spectator: true, view: { type: 'wait', key: 'audience', title: 'You’re in the audience', text: 'The park is full, but you can vote and cheer.', emoji: '👀' } };
         this.audience.push(p);
-      } else p = this.make(name, m.avatar, false);
+      } else p = this.make(name, false, m.color);
       p.token = m.token;
     } else if (p.cid && p.cid !== cid) this.byConn.delete(p.cid);
     p.cid = cid; p.connected = true;
@@ -58,11 +58,19 @@ export class Room {
     this.onChange();
   }
 
-  private make(name: string, avatar: string, bot: boolean): Player {
+  private make(name: string, bot: boolean, wanted?: string): Player {
     const used = new Set(this.players.map((x) => x.color));
-    const ci = Math.max(0, COLORS.findIndex((c) => !used.has(c)));
+    let ci = Math.max(0, COLORS.findIndex((c) => !used.has(c)));
+    const wi = COLORS.indexOf(wanted ?? '');
+    if (wi >= 0 && wi !== ci) {
+      const holder = this.players.find((x) => x.color === wanted);
+      if (!holder) ci = wi;
+      else if (holder.bot) { holder.color = COLORS[ci]; holder.shape = SHAPES[ci]; ci = wi; }      // a bot gives up its colour to a person who asks for it
+    }
+    const icons = new Set(this.players.map((x) => x.avatar));
+    const avatar = AVATARS.find((a) => !icons.has(a)) ?? AVATARS[this.seq % AVATARS.length];      // everyone gets their own little icon
     const p: Player = {
-      id: 'p' + ++this.seq, token: '', name, avatar: AVATARS.includes(avatar) ? avatar : AVATARS[ci], color: COLORS[ci], shape: SHAPES[ci],
+      id: 'p' + ++this.seq, token: '', name, avatar, color: COLORS[ci], shape: SHAPES[ci],
       tickets: 0, connected: bot, bot, vip: false, level: 1, view: { type: 'wait', key: 'new', title: 'Welcome!' },
     };
     this.players.push(p);
@@ -72,7 +80,7 @@ export class Room {
   addBot(level: 0 | 1 | 2 = 1) {
     if (this.players.length >= MAX_PLAYERS) return;
     const name = BOT_NAMES.find((n) => !this.players.some((p) => p.name === n)) || 'Bot';
-    this.make(name, AVATARS[(this.seq * 5) % AVATARS.length], true).level = level;
+    this.make(name, true).level = level;
     this.onChange();
   }
 
